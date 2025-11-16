@@ -1,0 +1,56 @@
+version: '3.9'
+name: blockinsight7000
+
+services:
+  ch-keeper:
+    image: clickhouse/clickhouse-keeper:latest
+    container_name: ch-keeper
+    restart: unless-stopped
+    ports:
+      - "9181:9181"
+    volumes:
+      - ./keeper/config.xml:/etc/clickhouse-keeper/config.xml:ro
+      - keeper_data:/var/lib/clickhouse
+    command: >
+      clickhouse-keeper
+      --config-file=/etc/clickhouse-keeper/config.xml
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    restart: unless-stopped
+    depends_on:
+      - ch-keeper
+    ports:
+      - "8123:8123"   # HTTP
+      - "9000:9000"   # Native TCP
+      - "9009:9009"   # interserver http
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
+      - ./clickhouse/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_USER: blockinsight7000
+      CLICKHOUSE_PASSWORD: e1uYl2Fs0bjMfb
+      CLICKHOUSE_DB: blockinsight7000
+
+  bitcoind-testnet:
+    image: ruimarinho/bitcoin-core:latest
+    container_name: bitcoin-testnet
+    restart: unless-stopped
+
+    volumes:
+      - bitcoind_testnet_data:/home/bitcoin/.bitcoin
+      - ./bitcoin.conf:/home/bitcoin/.bitcoin/bitcoin.conf
+
+    ports:
+      - "8332:8332"   # RPC
+      - "8333:8333"   # P2P
+      - "28332:28332" # ZMQ rawblock
+      - "28333:28333" # ZMQ rawtx
+
+volumes:
+  clickhouse_data:
+  keeper_data:
+  bitcoind_testnet_data:
