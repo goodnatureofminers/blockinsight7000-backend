@@ -72,7 +72,7 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpc.Shutdown()
 		rpc.WaitForShutdown()
 	}()
-	svc := service.NewBTCHistorySyncService(
+	svc, err := service.NewBTCHistorySyncService(
 		repo,
 		rpc,
 		cfg.NodeName,
@@ -80,6 +80,9 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		logger,
 		service.DefaultBTCHistoryBatchConfig(),
 	)
+	if err != nil {
+		return err
+	}
 	return svc.Run(ctx)
 }
 

@@ -24,7 +24,7 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
 
-	service := NewBTCHistorySyncService(
+	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
 		"node",
@@ -37,6 +37,9 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 			InputBatchSize:  1,
 		},
 	)
+	if err != nil {
+		t.Fatalf("NewBTCHistorySyncService: %v", err)
+	}
 
 	block := testBlock(0)
 
@@ -81,6 +84,12 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 			if outputs[0].Value == 0 {
 				t.Fatalf("expected non-zero output value")
 			}
+			if outputs[0].BlockHeight != 0 {
+				t.Fatalf("unexpected block height: %d", outputs[0].BlockHeight)
+			}
+			if outputs[0].BlockTime.IsZero() {
+				t.Fatalf("expected block time to be populated")
+			}
 			return nil
 		})
 
@@ -92,6 +101,12 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 			}
 			if !inputs[0].IsCoinbase {
 				t.Fatalf("expected coinbase input")
+			}
+			if inputs[0].BlockHeight != 0 {
+				t.Fatalf("unexpected input block height: %d", inputs[0].BlockHeight)
+			}
+			if inputs[0].BlockTime.IsZero() {
+				t.Fatalf("expected input block time")
 			}
 			return nil
 		})
@@ -110,7 +125,7 @@ func TestBTCHistorySyncServiceRun_InsertBlocksError(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
 
-	service := NewBTCHistorySyncService(
+	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
 		"node",
@@ -118,6 +133,9 @@ func TestBTCHistorySyncServiceRun_InsertBlocksError(t *testing.T) {
 		logger,
 		BTCHistoryBatchConfig{1, 1, 1, 1},
 	)
+	if err != nil {
+		t.Fatalf("NewBTCHistorySyncService: %v", err)
+	}
 
 	block := testBlock(0)
 
@@ -147,7 +165,7 @@ func TestBTCHistorySyncServiceRunAlreadyUpToDate(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
 
-	service := NewBTCHistorySyncService(
+	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
 		"node",
@@ -155,6 +173,9 @@ func TestBTCHistorySyncServiceRunAlreadyUpToDate(t *testing.T) {
 		logger,
 		DefaultBTCHistoryBatchConfig(),
 	)
+	if err != nil {
+		t.Fatalf("NewBTCHistorySyncService: %v", err)
+	}
 
 	repo.EXPECT().
 		MaxBlockHeight(ctx, "node", "network").

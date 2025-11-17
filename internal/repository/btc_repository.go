@@ -219,6 +219,8 @@ func (r *BTCRepository) InsertTransactionInputs(ctx context.Context, inputs []mo
 INSERT INTO btc_transaction_inputs (
 	node,
 	network,
+	block_height,
+	block_timestamp,
 	txid,
 	input_index,
 	prev_txid,
@@ -241,6 +243,8 @@ INSERT INTO btc_transaction_inputs (
 		if err := batch.Append(
 			input.Node,
 			input.Network,
+			input.BlockHeight,
+			input.BlockTime,
 			input.TxID,
 			input.Index,
 			input.PrevTxID,
@@ -272,6 +276,8 @@ func (r *BTCRepository) InsertTransactionOutputs(ctx context.Context, outputs []
 INSERT INTO btc_transaction_outputs (
 	node,
 	network,
+	block_height,
+	block_timestamp,
 	txid,
 	output_index,
 	value,
@@ -290,6 +296,8 @@ INSERT INTO btc_transaction_outputs (
 		if err := batch.Append(
 			output.Node,
 			output.Network,
+			output.BlockHeight,
+			output.BlockTime,
 			output.TxID,
 			output.Index,
 			output.Value,
@@ -311,6 +319,8 @@ INSERT INTO btc_transaction_outputs (
 func (r *BTCRepository) TransactionOutputs(ctx context.Context, node, network, txid string) ([]model.BTCTransactionOutput, error) {
 	const query = `
 SELECT
+	block_height,
+	block_timestamp,
 	output_index,
 	value,
 	script_type,
@@ -334,6 +344,8 @@ ORDER BY output_index ASC`
 		output.Network = network
 		output.TxID = txid
 		if err := rows.Scan(
+			&output.BlockHeight,
+			&output.BlockTime,
 			&output.Index,
 			&output.Value,
 			&output.ScriptType,

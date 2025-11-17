@@ -38,6 +38,8 @@ type BTCTransaction struct {
 type BTCTransactionInput struct {
 	Node         string
 	Network      string
+	BlockHeight  uint32
+	BlockTime    time.Time
 	TxID         string
 	Index        uint32
 	PrevTxID     string
@@ -53,13 +55,15 @@ type BTCTransactionInput struct {
 
 // BTCTransactionOutput describes a single transaction output.
 type BTCTransactionOutput struct {
-	Node       string
-	Network    string
-	TxID       string
-	Index      uint32
-	Value      uint64
-	ScriptType string
-	ScriptHex  string
-	ScriptAsm  string
-	Addresses  []string
+	Node        string
+	Network     string
+	BlockHeight uint32
+	BlockTime   time.Time
+	TxID        string
+	Index       uint32
+	Value       uint64
+	ScriptType  string
+	ScriptHex   string
+	ScriptAsm   string
+	Addresses   []string
 }

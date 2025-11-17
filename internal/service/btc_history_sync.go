@@ -25,10 +25,10 @@ type BTCHistoryBatchConfig struct {
 // DefaultBTCHistoryBatchConfig returns sane default batch sizes.
 func DefaultBTCHistoryBatchConfig() BTCHistoryBatchConfig {
 	return BTCHistoryBatchConfig{
-		BlockBatchSize:  1000,
-		TxBatchSize:     5000,
-		OutputBatchSize: 10000,
-		InputBatchSize:  10000,
+		BlockBatchSize:  100,
+		TxBatchSize:     500,
+		OutputBatchSize: 1000,
+		InputBatchSize:  1000,
 	}
 }
 
@@ -40,6 +40,7 @@ type BTCHistorySyncService struct {
 	node    string
 	network string
 	batch   BTCHistoryBatchConfig
+	decoder *scriptDecoder
 }
 
 // NewBTCHistorySyncService builds the history sync service with the provided dependencies.
@@ -49,9 +50,13 @@ func NewBTCHistorySyncService(
 	node, network string,
 	logger *zap.Logger,
 	batch BTCHistoryBatchConfig,
-) *BTCHistorySyncService {
+) (*BTCHistorySyncService, error) {
 	if batch.BlockBatchSize <= 0 || batch.TxBatchSize <= 0 || batch.OutputBatchSize <= 0 || batch.InputBatchSize <= 0 {
 		batch = DefaultBTCHistoryBatchConfig()
+	}
+	decoder, err := newScriptDecoder(network)
+	if err != nil {
+		return nil, err
 	}
 	return &BTCHistorySyncService{
 		repo:    repo,
@@ -60,7 +65,8 @@ func NewBTCHistorySyncService(
 		node:    node,
 		network: network,
 		batch:   batch,
-	}
+		decoder: decoder,
+	}, nil
 }
 
 // Run performs the backfill until the latest block height.
@@ -245,7 +251,7 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 
 	outputs := make([]model.BTCTransactionOutput, 0, totalOutputs)
 	for _, tx := range src.Tx {
-		txOutputs, err := convertOutputs(tx, s.node, s.network)
+		txOutputs, err := s.convertOutputs(tx, block.Height, timestamp)
 		if err != nil {
 			return block, nil, nil, nil, err
 		}
@@ -270,7 +276,7 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 			return block, nil, nil, nil, fmt.Errorf("tx %s negative vsize: %d", tx.Txid, tx.Vsize)
 		}
 
-		txInputs, inputTotal, err := convertInputs(ctx, resolver, tx, s.node, s.network)
+		txInputs, inputTotal, err := convertInputs(ctx, resolver, tx, s.node, s.network, block.Height, timestamp)
 		if err != nil {
 			return block, nil, nil, nil, err
 		}
@@ -310,7 +316,7 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 	return block, txs, inputs, outputs, nil
 }
 
-func convertOutputs(tx btcjson.TxRawResult, node, network string) ([]model.BTCTransactionOutput, error) {
+func (s *BTCHistorySyncService) convertOutputs(tx btcjson.TxRawResult, blockHeight uint32, blockTime time.Time) ([]model.BTCTransactionOutput, error) {
 	outputs := make([]model.BTCTransactionOutput, 0, len(tx.Vout))
 	for idx, vout := range tx.Vout {
 		if vout.Value < 0 {
@@ -322,18 +328,23 @@ func convertOutputs(tx btcjson.TxRawResult, node, network string) ([]model.BTCTr
 			return nil, fmt.Errorf("tx %s output %d convert value: %w", tx.Txid, idx, err)
 		}
 
-		addresses := append([]string(nil), vout.ScriptPubKey.Addresses...)
+		addresses, err := s.decoder.decodeAddresses(vout)
+		if err != nil {
+			return nil, fmt.Errorf("decode addresses for tx %s output %d: %w", tx.Txid, idx, err)
+		}
 
 		outputs = append(outputs, model.BTCTransactionOutput{
-			Node:       node,
-			Network:    network,
-			TxID:       tx.Txid,
-			Index:      uint32(idx),
-			Value:      value,
-			ScriptType: vout.ScriptPubKey.Type,
-			ScriptHex:  vout.ScriptPubKey.Hex,
-			ScriptAsm:  vout.ScriptPubKey.Asm,
-			Addresses:  addresses,
+			Node:        s.node,
+			Network:     s.network,
+			BlockHeight: blockHeight,
+			BlockTime:   blockTime,
+			TxID:        tx.Txid,
+			Index:       uint32(idx),
+			Value:       value,
+			ScriptType:  vout.ScriptPubKey.Type,
+			ScriptHex:   vout.ScriptPubKey.Hex,
+			ScriptAsm:   vout.ScriptPubKey.Asm,
+			Addresses:   addresses,
 		})
 	}
 
@@ -345,6 +356,8 @@ func convertInputs(
 	resolver *BTCOutputResolver,
 	tx btcjson.TxRawResult,
 	node, network string,
+	blockHeight uint32,
+	blockTime time.Time,
 ) ([]model.BTCTransactionInput, uint64, error) {
 	inputs := make([]model.BTCTransactionInput, 0, len(tx.Vin))
 	var total uint64
@@ -364,6 +377,8 @@ func convertInputs(
 		input := model.BTCTransactionInput{
 			Node:         node,
 			Network:      network,
+			BlockHeight:  blockHeight,
+			BlockTime:    blockTime,
 			TxID:         tx.Txid,
 			Index:        uint32(idx),
 			PrevTxID:     vin.Txid,
