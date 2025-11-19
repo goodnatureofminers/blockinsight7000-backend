@@ -13,6 +13,7 @@ import (
 type (
 	BTCRepository interface {
 		TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error)
+		RandomMissingBlockHeights(ctx context.Context, network string, maxHeight, limit uint64) ([]uint64, error)
 		MaxBlockHeight(ctx context.Context, network string) (uint64, bool, error)
 		InsertBlocks(ctx context.Context, blocks []model.BTCBlock) error
 		InsertTransactions(ctx context.Context, txs []model.BTCTransaction) error

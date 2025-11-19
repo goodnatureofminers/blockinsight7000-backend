@@ -2,10 +2,16 @@ package model
 
 import "time"
 
+type InsertBTCBlock struct {
+	Block   BTCBlock
+	Txs     []BTCTransaction
+	Outputs []BTCTransactionOutput
+}
+
 // BTCBlock describes a bitcoin block stored in ClickHouse.
 type BTCBlock struct {
 	Network    string
-	Height     uint32
+	Height     uint64
 	Hash       string
 	Timestamp  time.Time
 	Version    uint32
@@ -21,13 +27,12 @@ type BTCBlock struct {
 type BTCTransaction struct {
 	Network     string
 	TxID        string
-	BlockHeight uint32
+	BlockHeight uint64
 	Timestamp   time.Time
 	Size        uint32
 	VSize       uint32
 	Version     uint32
 	LockTime    uint32
-	Fee         uint64
 	InputCount  uint16
 	OutputCount uint16
 }
@@ -35,7 +40,7 @@ type BTCTransaction struct {
 // BTCTransactionInput describes a single transaction input.
 type BTCTransactionInput struct {
 	Network      string
-	BlockHeight  uint32
+	BlockHeight  uint64
 	BlockTime    time.Time
 	TxID         string
 	Index        uint32
@@ -53,7 +58,7 @@ type BTCTransactionInput struct {
 // BTCTransactionOutput describes a single transaction output.
 type BTCTransactionOutput struct {
 	Network     string
-	BlockHeight uint32
+	BlockHeight uint64
 	BlockTime   time.Time
 	TxID        string
 	Index       uint32

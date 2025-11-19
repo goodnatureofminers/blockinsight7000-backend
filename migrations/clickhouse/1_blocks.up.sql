@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS btc_blocks (
     network LowCardinality(String) CODEC(ZSTD(1)),
-    height UInt32 CODEC(ZSTD(1)),
+    height UInt64 CODEC(ZSTD(1)),
     hash FixedString(64) CODEC(ZSTD(1)),
     timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
     version UInt32  CODEC(ZSTD(1)),

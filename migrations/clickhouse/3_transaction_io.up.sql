@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS btc_transaction_inputs (
     network LowCardinality(String) CODEC(ZSTD(1)),
-    block_height UInt32 CODEC(ZSTD(1)),
+    block_height UInt64 CODEC(ZSTD(1)),
     block_timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
     txid FixedString(64) CODEC(ZSTD(1)),
     input_index UInt32 CODEC(ZSTD(1)),
@@ -21,7 +21,7 @@ ORDER BY (network, block_height, txid, input_index);
 
 CREATE TABLE IF NOT EXISTS btc_transaction_outputs (
     network LowCardinality(String) CODEC(ZSTD(1)),
-    block_height UInt32 CODEC(ZSTD(1)),
+    block_height UInt64 CODEC(ZSTD(1)),
     block_timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
     txid FixedString(64) CODEC(ZSTD(1)),
     output_index UInt32 CODEC(ZSTD(1)),
