@@ -20,7 +20,6 @@ import (
 
 type config struct {
 	ClickhouseDSN string        `long:"clickhouse-dsn" env:"BTC_HISTORY_CLICKHOUSE_DSN" description:"ClickHouse DSN"`
-	NodeName      string        `long:"node-name" env:"BTC_HISTORY_NODE_NAME" description:"node name" required:"true"`
 	Network       string        `long:"network" env:"BTC_HISTORY_NETWORK" description:"network name" required:"true"`
 	RPCURL        string        `long:"rpc-url" env:"BTC_HISTORY_RPC_URL" description:"Bitcoin RPC URL" default:"http://127.0.0.1:8332"`
 	RPCUser       string        `long:"rpc-user" env:"BTC_HISTORY_RPC_USER" description:"Bitcoin RPC username"`
@@ -75,7 +74,6 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 	svc, err := service.NewBTCHistorySyncService(
 		repo,
 		rpc,
-		cfg.NodeName,
 		cfg.Network,
 		logger,
 		service.DefaultBTCHistoryBatchConfig(),

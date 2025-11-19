@@ -54,13 +54,13 @@ WHERE network = ?`
 	return height, nil
 }
 
-func (r *BTCRepository) MinBlockHeight(ctx context.Context, node, network string) (uint64, bool, error) {
+func (r *BTCRepository) MinBlockHeight(ctx context.Context, network string) (uint64, bool, error) {
 	const query = `
 SELECT toUInt64(min(height)) as height, count() as cnt
 FROM btc_blocks
-WHERE node = ? AND network = ?`
+WHERE network = ?`
 
-	rows, err := r.conn.Query(ctx, query, node, network)
+	rows, err := r.conn.Query(ctx, query, network)
 	if err != nil {
 		return 0, false, fmt.Errorf("query min block height: %w", err)
 	}
@@ -81,13 +81,13 @@ WHERE node = ? AND network = ?`
 	return height, true, nil
 }
 
-func (r *BTCRepository) MaxBlockHeight(ctx context.Context, node, network string) (uint64, bool, error) {
+func (r *BTCRepository) MaxBlockHeight(ctx context.Context, network string) (uint64, bool, error) {
 	const query = `
 SELECT toUInt64(max(height)) as height, count() as cnt
 FROM btc_blocks
-WHERE node = ? AND network = ?`
+WHERE network = ?`
 
-	rows, err := r.conn.Query(ctx, query, node, network)
+	rows, err := r.conn.Query(ctx, query, network)
 	if err != nil {
 		return 0, false, fmt.Errorf("query max block height: %w", err)
 	}
@@ -115,7 +115,6 @@ func (r *BTCRepository) InsertBlocks(ctx context.Context, blocks []model.BTCBloc
 
 	const query = `
 INSERT INTO btc_blocks (
-	node,
 	network,
 	height,
 	hash,
@@ -136,7 +135,6 @@ INSERT INTO btc_blocks (
 
 	for _, block := range blocks {
 		if err := batch.Append(
-			block.Node,
 			block.Network,
 			block.Height,
 			block.Hash,
@@ -166,7 +164,6 @@ func (r *BTCRepository) InsertTransactions(ctx context.Context, txs []model.BTCT
 
 	const query = `
 INSERT INTO btc_transactions (
-	node,
 	network,
 	txid,
 	block_height,
@@ -187,7 +184,6 @@ INSERT INTO btc_transactions (
 
 	for _, tx := range txs {
 		if err := batch.Append(
-			tx.Node,
 			tx.Network,
 			tx.TxID,
 			tx.BlockHeight,
@@ -217,7 +213,6 @@ func (r *BTCRepository) InsertTransactionInputs(ctx context.Context, inputs []mo
 
 	const query = `
 INSERT INTO btc_transaction_inputs (
-	node,
 	network,
 	block_height,
 	block_timestamp,
@@ -241,7 +236,6 @@ INSERT INTO btc_transaction_inputs (
 
 	for _, input := range inputs {
 		if err := batch.Append(
-			input.Node,
 			input.Network,
 			input.BlockHeight,
 			input.BlockTime,
@@ -274,7 +268,6 @@ func (r *BTCRepository) InsertTransactionOutputs(ctx context.Context, outputs []
 
 	const query = `
 INSERT INTO btc_transaction_outputs (
-	node,
 	network,
 	block_height,
 	block_timestamp,
@@ -294,7 +287,6 @@ INSERT INTO btc_transaction_outputs (
 
 	for _, output := range outputs {
 		if err := batch.Append(
-			output.Node,
 			output.Network,
 			output.BlockHeight,
 			output.BlockTime,
@@ -316,7 +308,7 @@ INSERT INTO btc_transaction_outputs (
 	return nil
 }
 
-func (r *BTCRepository) TransactionOutputs(ctx context.Context, node, network, txid string) ([]model.BTCTransactionOutput, error) {
+func (r *BTCRepository) TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error) {
 	const query = `
 SELECT
 	block_height,
@@ -328,10 +320,10 @@ SELECT
 	script_asm,
 	addresses
 FROM btc_transaction_outputs
-WHERE node = ? AND network = ? AND txid = ?
+WHERE network = ? AND txid = ?
 ORDER BY output_index ASC`
 
-	rows, err := r.conn.Query(ctx, query, node, network, txid)
+	rows, err := r.conn.Query(ctx, query, network, txid)
 	if err != nil {
 		return nil, fmt.Errorf("query transaction outputs: %w", err)
 	}
@@ -340,7 +332,6 @@ ORDER BY output_index ASC`
 	var outputs []model.BTCTransactionOutput
 	for rows.Next() {
 		var output model.BTCTransactionOutput
-		output.Node = node
 		output.Network = network
 		output.TxID = txid
 		if err := rows.Scan(

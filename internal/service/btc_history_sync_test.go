@@ -27,7 +27,6 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
-		"node",
 		"network",
 		logger,
 		BTCHistoryBatchConfig{
@@ -44,7 +43,7 @@ func TestBTCHistorySyncServiceRun_Success(t *testing.T) {
 	block := testBlock(0)
 
 	repo.EXPECT().
-		MaxBlockHeight(ctx, "node", "network").
+		MaxBlockHeight(ctx, "network").
 		Return(uint64(0), false, nil)
 
 	rpc.EXPECT().GetBlockCount().Return(int64(0), nil)
@@ -128,7 +127,6 @@ func TestBTCHistorySyncServiceRun_InsertBlocksError(t *testing.T) {
 	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
-		"node",
 		"network",
 		logger,
 		BTCHistoryBatchConfig{1, 1, 1, 1},
@@ -140,7 +138,7 @@ func TestBTCHistorySyncServiceRun_InsertBlocksError(t *testing.T) {
 	block := testBlock(0)
 
 	repo.EXPECT().
-		MaxBlockHeight(ctx, "node", "network").
+		MaxBlockHeight(ctx, "network").
 		Return(uint64(0), false, nil)
 	rpc.EXPECT().GetBlockCount().Return(int64(0), nil)
 	rpc.EXPECT().GetBlockHash(int64(0)).Return(&chainhash.Hash{}, nil)
@@ -168,7 +166,6 @@ func TestBTCHistorySyncServiceRunAlreadyUpToDate(t *testing.T) {
 	service, err := NewBTCHistorySyncService(
 		repo,
 		rpc,
-		"node",
 		"network",
 		logger,
 		DefaultBTCHistoryBatchConfig(),
@@ -178,7 +175,7 @@ func TestBTCHistorySyncServiceRunAlreadyUpToDate(t *testing.T) {
 	}
 
 	repo.EXPECT().
-		MaxBlockHeight(ctx, "node", "network").
+		MaxBlockHeight(ctx, "network").
 		Return(uint64(5), true, nil)
 	rpc.EXPECT().GetBlockCount().Return(int64(3), nil)
 

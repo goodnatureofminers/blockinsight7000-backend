@@ -94,9 +94,9 @@ func (mr *MockBTCRepositoryMockRecorder) InsertTransactions(ctx, txs interface{}
 }
 
 // MaxBlockHeight mocks base method.
-func (m *MockBTCRepository) MaxBlockHeight(ctx context.Context, node, network string) (uint64, bool, error) {
+func (m *MockBTCRepository) MaxBlockHeight(ctx context.Context, network string) (uint64, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaxBlockHeight", ctx, node, network)
+	ret := m.ctrl.Call(m, "MaxBlockHeight", ctx, network)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(error)
@@ -104,24 +104,24 @@ func (m *MockBTCRepository) MaxBlockHeight(ctx context.Context, node, network st
 }
 
 // MaxBlockHeight indicates an expected call of MaxBlockHeight.
-func (mr *MockBTCRepositoryMockRecorder) MaxBlockHeight(ctx, node, network interface{}) *gomock.Call {
+func (mr *MockBTCRepositoryMockRecorder) MaxBlockHeight(ctx, network interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxBlockHeight", reflect.TypeOf((*MockBTCRepository)(nil).MaxBlockHeight), ctx, node, network)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxBlockHeight", reflect.TypeOf((*MockBTCRepository)(nil).MaxBlockHeight), ctx, network)
 }
 
 // TransactionOutputs mocks base method.
-func (m *MockBTCRepository) TransactionOutputs(ctx context.Context, node, network, txid string) ([]model.BTCTransactionOutput, error) {
+func (m *MockBTCRepository) TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TransactionOutputs", ctx, node, network, txid)
+	ret := m.ctrl.Call(m, "TransactionOutputs", ctx, network, txid)
 	ret0, _ := ret[0].([]model.BTCTransactionOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TransactionOutputs indicates an expected call of TransactionOutputs.
-func (mr *MockBTCRepositoryMockRecorder) TransactionOutputs(ctx, node, network, txid interface{}) *gomock.Call {
+func (mr *MockBTCRepositoryMockRecorder) TransactionOutputs(ctx, network, txid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionOutputs", reflect.TypeOf((*MockBTCRepository)(nil).TransactionOutputs), ctx, node, network, txid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionOutputs", reflect.TypeOf((*MockBTCRepository)(nil).TransactionOutputs), ctx, network, txid)
 }
 
 // MockBTCRpcClient is a mock of BTCRpcClient interface.

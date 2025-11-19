@@ -10,16 +10,14 @@ import (
 // BTCOutputResolver caches transaction outputs during ingestion so we can compute input values.
 type BTCOutputResolver struct {
 	repo    BTCRepository
-	node    string
 	network string
 	cache   map[string][]model.BTCTransactionOutput
 }
 
-// NewBTCOutputResolver constructs the resolver for a given node/network scope.
-func NewBTCOutputResolver(repo BTCRepository, node, network string) *BTCOutputResolver {
+// NewBTCOutputResolver constructs the resolver for a given network scope.
+func NewBTCOutputResolver(repo BTCRepository, network string) *BTCOutputResolver {
 	return &BTCOutputResolver{
 		repo:    repo,
-		node:    node,
 		network: network,
 		cache:   make(map[string][]model.BTCTransactionOutput),
 	}
@@ -42,7 +40,7 @@ func (r *BTCOutputResolver) Resolve(ctx context.Context, txid string) ([]model.B
 		return outputs, nil
 	}
 
-	outputs, err := r.repo.TransactionOutputs(ctx, r.node, r.network, txid)
+	outputs, err := r.repo.TransactionOutputs(ctx, r.network, txid)
 	if err != nil {
 		return nil, err
 	}

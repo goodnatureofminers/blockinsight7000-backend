@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS btc_transaction_inputs (
-    node LowCardinality(String) CODEC(ZSTD(1)),
     network LowCardinality(String) CODEC(ZSTD(1)),
     block_height UInt32 CODEC(ZSTD(1)),
     block_timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
@@ -16,12 +15,11 @@ CREATE TABLE IF NOT EXISTS btc_transaction_inputs (
     addresses Array(String) CODEC(ZSTD(3))
 )
 ENGINE = ReplacingMergeTree
-PARTITION BY (network, node, toYYYYMM(block_timestamp))
-PRIMARY KEY (node, network, block_height, txid, input_index)
-ORDER BY (node, network, block_height, txid, input_index);
+PARTITION BY (network,toYYYYMM(block_timestamp))
+PRIMARY KEY (network, block_height, txid, input_index)
+ORDER BY (network, block_height, txid, input_index);
 
 CREATE TABLE IF NOT EXISTS btc_transaction_outputs (
-    node LowCardinality(String) CODEC(ZSTD(1)),
     network LowCardinality(String) CODEC(ZSTD(1)),
     block_height UInt32 CODEC(ZSTD(1)),
     block_timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
@@ -34,6 +32,6 @@ CREATE TABLE IF NOT EXISTS btc_transaction_outputs (
     addresses Array(String) CODEC(ZSTD(3))
 )
 ENGINE = ReplacingMergeTree
-PARTITION BY (network, node, toYYYYMM(block_timestamp))
-PRIMARY KEY (node, network, block_height, txid, output_index)
-ORDER BY (node, network, block_height, txid, output_index);
+PARTITION BY (network, toYYYYMM(block_timestamp))
+PRIMARY KEY (network, block_height, txid, output_index)
+ORDER BY (network, block_height, txid, output_index);
