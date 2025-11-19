@@ -12,8 +12,8 @@ import (
 
 type (
 	BTCRepository interface {
-		TransactionOutputs(ctx context.Context, node, network, txid string) ([]model.BTCTransactionOutput, error)
-		MaxBlockHeight(ctx context.Context, node, network string) (uint64, bool, error)
+		TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error)
+		MaxBlockHeight(ctx context.Context, network string) (uint64, bool, error)
 		InsertBlocks(ctx context.Context, blocks []model.BTCBlock) error
 		InsertTransactions(ctx context.Context, txs []model.BTCTransaction) error
 		InsertTransactionOutputs(ctx context.Context, outputs []model.BTCTransactionOutput) error

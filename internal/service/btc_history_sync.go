@@ -37,7 +37,6 @@ type BTCHistorySyncService struct {
 	repo    BTCRepository
 	rpc     BTCRpcClient
 	logger  *zap.Logger
-	node    string
 	network string
 	batch   BTCHistoryBatchConfig
 	decoder *scriptDecoder
@@ -47,7 +46,7 @@ type BTCHistorySyncService struct {
 func NewBTCHistorySyncService(
 	repo BTCRepository,
 	rpc BTCRpcClient,
-	node, network string,
+	network string,
 	logger *zap.Logger,
 	batch BTCHistoryBatchConfig,
 ) (*BTCHistorySyncService, error) {
@@ -62,7 +61,6 @@ func NewBTCHistorySyncService(
 		repo:    repo,
 		rpc:     rpc,
 		logger:  logger,
-		node:    node,
 		network: network,
 		batch:   batch,
 		decoder: decoder,
@@ -71,7 +69,7 @@ func NewBTCHistorySyncService(
 
 // Run performs the backfill until the latest block height.
 func (s *BTCHistorySyncService) Run(ctx context.Context) error {
-	maxHeight, exists, err := s.repo.MaxBlockHeight(ctx, s.node, s.network)
+	maxHeight, exists, err := s.repo.MaxBlockHeight(ctx, s.network)
 	if err != nil {
 		return err
 	}
@@ -91,20 +89,17 @@ func (s *BTCHistorySyncService) Run(ctx context.Context) error {
 	case !exists:
 		startHeight = 0
 		s.logger.Info("starting history backfill from genesis",
-			zap.String("node", s.node),
 			zap.String("network", s.network),
 			zap.Uint64("target_height", targetHeight))
 	default:
 		if maxHeight >= targetHeight {
 			s.logger.Info("history already ingested up to latest height",
-				zap.String("node", s.node),
 				zap.String("network", s.network),
 				zap.Uint64("height", maxHeight))
 			return nil
 		}
 		startHeight = maxHeight + 1
 		s.logger.Info("resuming history backfill",
-			zap.String("node", s.node),
 			zap.String("network", s.network),
 			zap.Uint64("start_height", startHeight),
 			zap.Uint64("target_height", targetHeight))
@@ -115,7 +110,7 @@ func (s *BTCHistorySyncService) Run(ctx context.Context) error {
 	outputBatch := make([]model.BTCTransactionOutput, 0, s.batch.OutputBatchSize)
 	inputBatch := make([]model.BTCTransactionInput, 0, s.batch.InputBatchSize)
 
-	resolver := NewBTCOutputResolver(s.repo, s.node, s.network)
+	resolver := NewBTCOutputResolver(s.repo, s.network)
 
 	flush := func() error {
 		if err := s.flushBatches(ctx, blockBatch, txBatch, inputBatch, outputBatch); err != nil {
@@ -160,7 +155,6 @@ func (s *BTCHistorySyncService) Run(ctx context.Context) error {
 	}
 
 	s.logger.Info("history backfill complete",
-		zap.String("node", s.node),
 		zap.String("network", s.network),
 		zap.Uint64("last_height", targetHeight))
 
@@ -185,7 +179,6 @@ func (s *BTCHistorySyncService) processHeight(
 	s.logger.Info("ingested block",
 		zap.Uint64("height", height),
 		zap.String("network", s.network),
-		zap.String("node", s.node),
 		zap.Int("transactions", len(txModels)))
 
 	return blockModel, txModels, inputs, outputs, nil
@@ -228,7 +221,6 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 
 	timestamp := time.Unix(src.Time, 0).UTC()
 	block = model.BTCBlock{
-		Node:       s.node,
 		Network:    s.network,
 		Height:     uint32(src.Height),
 		Hash:       src.Hash,
@@ -276,7 +268,7 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 			return block, nil, nil, nil, fmt.Errorf("tx %s negative vsize: %d", tx.Txid, tx.Vsize)
 		}
 
-		txInputs, inputTotal, err := convertInputs(ctx, resolver, tx, s.node, s.network, block.Height, timestamp)
+		txInputs, inputTotal, err := convertInputs(ctx, resolver, tx, s.network, block.Height, timestamp)
 		if err != nil {
 			return block, nil, nil, nil, err
 		}
@@ -298,7 +290,6 @@ func (s *BTCHistorySyncService) convertRPCBlock(
 		inputs = append(inputs, txInputs...)
 
 		txs = append(txs, model.BTCTransaction{
-			Node:        s.node,
 			Network:     s.network,
 			TxID:        tx.Txid,
 			BlockHeight: block.Height,
@@ -334,7 +325,6 @@ func (s *BTCHistorySyncService) convertOutputs(tx btcjson.TxRawResult, blockHeig
 		}
 
 		outputs = append(outputs, model.BTCTransactionOutput{
-			Node:        s.node,
 			Network:     s.network,
 			BlockHeight: blockHeight,
 			BlockTime:   blockTime,
@@ -355,7 +345,7 @@ func convertInputs(
 	ctx context.Context,
 	resolver *BTCOutputResolver,
 	tx btcjson.TxRawResult,
-	node, network string,
+	network string,
 	blockHeight uint32,
 	blockTime time.Time,
 ) ([]model.BTCTransactionInput, uint64, error) {
@@ -375,7 +365,6 @@ func convertInputs(
 		}
 
 		input := model.BTCTransactionInput{
-			Node:         node,
 			Network:      network,
 			BlockHeight:  blockHeight,
 			BlockTime:    blockTime,

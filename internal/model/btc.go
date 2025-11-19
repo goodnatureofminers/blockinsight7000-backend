@@ -4,7 +4,6 @@ import "time"
 
 // BTCBlock describes a bitcoin block stored in ClickHouse.
 type BTCBlock struct {
-	Node       string
 	Network    string
 	Height     uint32
 	Hash       string
@@ -20,7 +19,6 @@ type BTCBlock struct {
 
 // BTCTransaction describes a bitcoin transaction stored in ClickHouse.
 type BTCTransaction struct {
-	Node        string
 	Network     string
 	TxID        string
 	BlockHeight uint32
@@ -36,7 +34,6 @@ type BTCTransaction struct {
 
 // BTCTransactionInput describes a single transaction input.
 type BTCTransactionInput struct {
-	Node         string
 	Network      string
 	BlockHeight  uint32
 	BlockTime    time.Time
@@ -55,7 +52,6 @@ type BTCTransactionInput struct {
 
 // BTCTransactionOutput describes a single transaction output.
 type BTCTransactionOutput struct {
-	Node        string
 	Network     string
 	BlockHeight uint32
 	BlockTime   time.Time

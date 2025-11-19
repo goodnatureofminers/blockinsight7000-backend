@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS btc_blocks (
-    node LowCardinality(String) CODEC(ZSTD(1)),
     network LowCardinality(String) CODEC(ZSTD(1)),
     height UInt32 CODEC(ZSTD(1)),
     hash FixedString(64) CODEC(ZSTD(1)),
@@ -14,5 +13,5 @@ CREATE TABLE IF NOT EXISTS btc_blocks (
 )
 ENGINE = ReplacingMergeTree
 PARTITION BY (network, toYYYYMM(timestamp))
-PRIMARY KEY (node, network, height)
-ORDER BY (node, network, height);
+PRIMARY KEY (network, height)
+ORDER BY (network, height);

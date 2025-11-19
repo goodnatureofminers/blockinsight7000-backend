@@ -15,7 +15,7 @@ func TestOutputResolverSeedAndLocal(t *testing.T) {
 	t.Cleanup(ctrl.Finish)
 
 	repo := NewMockBTCRepository(ctrl)
-	resolver := NewBTCOutputResolver(repo, "node", "network")
+	resolver := NewBTCOutputResolver(repo, "network")
 
 	expected := []model.BTCTransactionOutput{
 		{TxID: "tx", Index: 0, Value: 1},
@@ -36,7 +36,7 @@ func TestOutputResolverResolveFetchesAndCaches(t *testing.T) {
 	t.Cleanup(ctrl.Finish)
 
 	repo := NewMockBTCRepository(ctrl)
-	resolver := NewBTCOutputResolver(repo, "node", "network")
+	resolver := NewBTCOutputResolver(repo, "network")
 
 	expected := []model.BTCTransactionOutput{
 		{TxID: "tx", Index: 0, Value: 42},
@@ -44,7 +44,7 @@ func TestOutputResolverResolveFetchesAndCaches(t *testing.T) {
 	ctx := context.Background()
 
 	repo.EXPECT().
-		TransactionOutputs(ctx, "node", "network", "tx").
+		TransactionOutputs(ctx, "network", "tx").
 		Return(expected, nil).
 		Times(1)
 
@@ -72,13 +72,13 @@ func TestOutputResolverResolvePropagatesRepoError(t *testing.T) {
 	t.Cleanup(ctrl.Finish)
 
 	repo := NewMockBTCRepository(ctrl)
-	resolver := NewBTCOutputResolver(repo, "node", "network")
+	resolver := NewBTCOutputResolver(repo, "network")
 
 	ctx := context.Background()
 	expectedErr := errors.New("boom")
 
 	repo.EXPECT().
-		TransactionOutputs(ctx, "node", "network", "tx").
+		TransactionOutputs(ctx, "network", "tx").
 		Return(nil, expectedErr)
 
 	if _, err := resolver.Resolve(ctx, "tx"); !errors.Is(err, expectedErr) {
@@ -91,12 +91,12 @@ func TestOutputResolverResolveFailsOnMissingOutputs(t *testing.T) {
 	t.Cleanup(ctrl.Finish)
 
 	repo := NewMockBTCRepository(ctrl)
-	resolver := NewBTCOutputResolver(repo, "node", "network")
+	resolver := NewBTCOutputResolver(repo, "network")
 
 	ctx := context.Background()
 
 	repo.EXPECT().
-		TransactionOutputs(ctx, "node", "network", "tx").
+		TransactionOutputs(ctx, "network", "tx").
 		Return([]model.BTCTransactionOutput{}, nil)
 
 	if _, err := resolver.Resolve(ctx, "tx"); err == nil {
