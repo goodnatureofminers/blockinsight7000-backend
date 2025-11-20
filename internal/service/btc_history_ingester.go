@@ -18,6 +18,21 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/model"
 )
 
+const (
+	defaultWorkerCount        = 50
+	randomMissingHeightsLimit = 10000
+
+	transactionFlushThreshold = 1000
+	outputFlushThreshold      = 1000
+
+	blockBatcherCapacity      = 500
+	blockBatcherFlushInterval = 30 * time.Second
+	blockBatcherWorkerCount   = 1
+
+	idleSleepDuration      = time.Minute
+	postBatchSleepDuration = 5 * time.Second
+)
+
 // BTCHistoryIngesterService orchestrates block ingestion into ClickHouse.
 type BTCHistoryIngesterService struct {
 	repo    BTCRepository
@@ -50,28 +65,47 @@ func NewBTCHistorySyncService(
 		logger:      logger,
 		network:     network,
 		decoder:     decoder,
-		workerCount: 50,
+		workerCount: defaultWorkerCount,
 		blockBatcher: batcher.New[model.InsertBTCBlock](
 			logger.Named("blockBatcher"),
 			func(ctx context.Context, insertBlocks []model.InsertBTCBlock) error {
 				blocks := make([]model.BTCBlock, 0, len(insertBlocks))
+				txs := make([]model.BTCTransaction, 0, len(insertBlocks))
+				outputs := make([]model.BTCTransactionOutput, 0, len(insertBlocks))
 				for _, block := range insertBlocks {
-					err := repo.InsertTransactions(ctx, block.Txs)
-					if err != nil {
-						return err
-					}
-					err = repo.InsertTransactionOutputs(ctx, block.Outputs)
-					if err != nil {
-						return err
-					}
 					blocks = append(blocks, block.Block)
+					txs = append(txs, block.Txs...)
+					if len(txs) >= transactionFlushThreshold {
+						err := repo.InsertTransactions(ctx, txs)
+						if err != nil {
+							return err
+						}
+						txs = make([]model.BTCTransaction, 0, len(insertBlocks))
+					}
+					outputs = append(outputs, block.Outputs...)
+					if len(outputs) >= outputFlushThreshold {
+						err = repo.InsertTransactionOutputs(ctx, outputs)
+						if err != nil {
+							return err
+						}
+						outputs = make([]model.BTCTransactionOutput, 0, len(insertBlocks))
+					}
+				}
+
+				err := repo.InsertTransactions(ctx, txs)
+				if err != nil {
+					return err
+				}
+				err = repo.InsertTransactionOutputs(ctx, outputs)
+				if err != nil {
+					return err
 				}
 
 				return repo.InsertBlocks(ctx, blocks)
 			},
-			1000,
-			5*time.Second,
-			1000,
+			blockBatcherCapacity,
+			blockBatcherFlushInterval,
+			blockBatcherWorkerCount,
 		),
 	}, nil
 }
@@ -90,23 +124,27 @@ func (s *BTCHistoryIngesterService) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		heights, err := s.repo.RandomMissingBlockHeights(ctx, s.network, uint64(latestHeight), 5000)
+		heights, err := s.repo.RandomMissingBlockHeights(ctx, s.network, uint64(latestHeight), randomMissingHeightsLimit)
 		if err != nil {
 			return err
 		}
+
 		if len(heights) == 0 {
-			if err := sleepWithContext(ctx, 30*time.Minute); err != nil {
+			s.logger.Info("no missing block heights; going idle", zap.Duration("sleep", idleSleepDuration))
+			if err := sleepWithContext(ctx, idleSleepDuration); err != nil {
 				return err
 			}
 			continue
 		}
 
+		s.logger.Info("starting sync batch", zap.Int("height_count", len(heights)))
+
 		err = s.processHeightsWithWorkers(ctx, heights)
 		if err != nil {
 			return err
 		}
-
-		if err := sleepWithContext(ctx, 10*time.Second); err != nil {
+		s.logger.Info("completed sync batch", zap.Duration("sleep", postBatchSleepDuration))
+		if err := sleepWithContext(ctx, postBatchSleepDuration); err != nil {
 			return err
 		}
 	}

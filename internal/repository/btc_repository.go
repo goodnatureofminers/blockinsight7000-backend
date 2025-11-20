@@ -175,7 +175,7 @@ INSERT INTO btc_blocks (
 	for _, block := range blocks {
 		if err := batch.Append(
 			block.Network,
-			uint32(block.Height),
+			block.Height,
 			block.Hash,
 			block.Timestamp,
 			block.Version,
@@ -224,7 +224,7 @@ INSERT INTO btc_transactions (
 		if err := batch.Append(
 			tx.Network,
 			tx.TxID,
-			uint32(tx.BlockHeight),
+			tx.BlockHeight,
 			tx.Timestamp,
 			tx.Size,
 			tx.VSize,
@@ -274,7 +274,7 @@ INSERT INTO btc_transaction_inputs (
 	for _, input := range inputs {
 		if err := batch.Append(
 			input.Network,
-			uint32(input.BlockHeight),
+			input.BlockHeight,
 			input.BlockTime,
 			input.TxID,
 			input.Index,
@@ -325,7 +325,7 @@ INSERT INTO btc_transaction_outputs (
 	for _, output := range outputs {
 		if err := batch.Append(
 			output.Network,
-			uint32(output.BlockHeight),
+			output.BlockHeight,
 			output.BlockTime,
 			output.TxID,
 			output.Index,

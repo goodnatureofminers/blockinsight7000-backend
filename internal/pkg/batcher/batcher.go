@@ -59,9 +59,14 @@ func (b *Batcher[T]) run(ctx context.Context) {
 		if len(buf) == 0 {
 			return
 		}
-		b.logger.Debug("batch flushed", zap.Int("size", len(buf)))
+
 		b.rl.Take()
-		_ = b.flushCallback(ctx, buf)
+		err := b.flushCallback(ctx, buf)
+		if err != nil {
+			b.logger.Error("batch not flushed", zap.Error(err))
+		} else {
+			b.logger.Debug("batch flushed", zap.Int("size", len(buf)))
+		}
 		buf = buf[:0]
 	}
 
@@ -77,6 +82,7 @@ func (b *Batcher[T]) run(ctx context.Context) {
 
 		case item := <-b.itemsCh:
 			buf = append(buf, item)
+			//b.logger.Debug("test", zap.Int("size", len(buf)))
 			if len(buf) >= b.flushSize {
 				flush()
 			}

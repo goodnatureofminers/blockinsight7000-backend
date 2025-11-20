@@ -7,10 +7,12 @@ CREATE TABLE IF NOT EXISTS btc_transactions (
     vsize UInt32 CODEC(ZSTD(1)),
     version UInt32 CODEC(ZSTD(1)),
     locktime UInt32 CODEC(ZSTD(1)),
+    fee UInt64 CODEC(ZSTD(1)),
     input_count UInt16 CODEC(ZSTD(1)),
-    output_count UInt16 CODEC(ZSTD(1))
+    output_count UInt16 CODEC(ZSTD(1)),
+    updated_at DateTime('UTC') DEFAULT now() CODEC(Delta(4), LZ4)
 )
-ENGINE = ReplacingMergeTree
+ENGINE = ReplacingMergeTree(updated_at)
 PARTITION BY (network, toYYYYMM(timestamp))
 PRIMARY KEY (network, block_height, txid)
 ORDER BY (network, block_height, txid);
