@@ -76,7 +76,6 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpc,
 		cfg.Network,
 		logger,
-		service.DefaultBTCHistoryBatchConfig(),
 	)
 	if err != nil {
 		return err

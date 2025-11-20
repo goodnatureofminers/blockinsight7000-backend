@@ -109,6 +109,21 @@ func (mr *MockBTCRepositoryMockRecorder) MaxBlockHeight(ctx, network interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxBlockHeight", reflect.TypeOf((*MockBTCRepository)(nil).MaxBlockHeight), ctx, network)
 }
 
+// RandomMissingBlockHeights mocks base method.
+func (m *MockBTCRepository) RandomMissingBlockHeights(ctx context.Context, network string, maxHeight, limit uint64) ([]uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RandomMissingBlockHeights", ctx, network, maxHeight, limit)
+	ret0, _ := ret[0].([]uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RandomMissingBlockHeights indicates an expected call of RandomMissingBlockHeights.
+func (mr *MockBTCRepositoryMockRecorder) RandomMissingBlockHeights(ctx, network, maxHeight, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RandomMissingBlockHeights", reflect.TypeOf((*MockBTCRepository)(nil).RandomMissingBlockHeights), ctx, network, maxHeight, limit)
+}
+
 // TransactionOutputs mocks base method.
 func (m *MockBTCRepository) TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error) {
 	m.ctrl.T.Helper()

@@ -34,7 +34,7 @@ func NewBTCRepository(dsn string) (*BTCRepository, error) {
 
 func (r *BTCRepository) BlocksCount(ctx context.Context, network string) (uint64, error) {
 	const query = `
-SELECT max(height) as height
+SELECT toUInt64(max(height)) as height
 FROM btc_blocks
 WHERE network = ?`
 
@@ -108,6 +108,45 @@ WHERE network = ?`
 	return height, true, nil
 }
 
+func (r *BTCRepository) RandomMissingBlockHeights(ctx context.Context, network string, maxHeight, limit uint64) ([]uint64, error) {
+	if limit == 0 {
+		return nil, nil
+	}
+
+	const query = `
+WITH toUInt64(?) AS mx
+SELECT number AS height
+FROM numbers(mx + 1) AS m
+LEFT ANTI JOIN (
+	SELECT height
+	FROM btc_blocks
+	WHERE network = ? AND height <= mx
+) AS b ON b.height = m.number
+WHERE m.number <= mx
+ORDER BY rand()
+LIMIT ?`
+
+	rows, err := r.conn.Query(ctx, query, maxHeight, network, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query random missing block heights: %w", err)
+	}
+	defer rows.Close()
+
+	var heights []uint64
+	for rows.Next() {
+		var height uint64
+		if err := rows.Scan(&height); err != nil {
+			return nil, fmt.Errorf("scan random missing block height: %w", err)
+		}
+		heights = append(heights, height)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate random missing block heights: %w", err)
+	}
+
+	return heights, nil
+}
+
 func (r *BTCRepository) InsertBlocks(ctx context.Context, blocks []model.BTCBlock) error {
 	if len(blocks) == 0 {
 		return nil
@@ -172,7 +211,6 @@ INSERT INTO btc_transactions (
 	vsize,
 	version,
 	locktime,
-	fee,
 	input_count,
 	output_count
 ) VALUES`
@@ -192,7 +230,6 @@ INSERT INTO btc_transactions (
 			tx.VSize,
 			tx.Version,
 			tx.LockTime,
-			tx.Fee,
 			tx.InputCount,
 			tx.OutputCount,
 		); err != nil {

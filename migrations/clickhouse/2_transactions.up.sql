@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS btc_transactions (
     network LowCardinality(String) CODEC(ZSTD(1)),
     txid FixedString(64) CODEC(ZSTD(1)),
-    block_height UInt32 CODEC(ZSTD(1)),
+    block_height UInt64 CODEC(ZSTD(1)),
     timestamp DateTime('UTC') CODEC(Delta(4), LZ4),
     size UInt32 CODEC(ZSTD(1)),
     vsize UInt32 CODEC(ZSTD(1)),
@@ -9,9 +9,10 @@ CREATE TABLE IF NOT EXISTS btc_transactions (
     locktime UInt32 CODEC(ZSTD(1)),
     fee UInt64 CODEC(ZSTD(1)),
     input_count UInt16 CODEC(ZSTD(1)),
-    output_count UInt16 CODEC(ZSTD(1))
+    output_count UInt16 CODEC(ZSTD(1)),
+    updated_at DateTime('UTC') DEFAULT now() CODEC(Delta(4), LZ4)
 )
-ENGINE = ReplacingMergeTree
+ENGINE = ReplacingMergeTree(updated_at)
 PARTITION BY (network, toYYYYMM(timestamp))
 PRIMARY KEY (network, block_height, txid)
 ORDER BY (network, block_height, txid);
