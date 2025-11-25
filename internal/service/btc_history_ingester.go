@@ -80,6 +80,7 @@ func NewBTCHistorySyncService(
 						if err != nil {
 							return err
 						}
+						logger.Debug("InsertTransactions")
 						txs = make([]model.BTCTransaction, 0, len(insertBlocks))
 					}
 					outputs = append(outputs, block.Outputs...)
@@ -88,6 +89,7 @@ func NewBTCHistorySyncService(
 						if err != nil {
 							return err
 						}
+						logger.Debug("InsertTransactionOutputs")
 						outputs = make([]model.BTCTransactionOutput, 0, len(insertBlocks))
 					}
 				}
