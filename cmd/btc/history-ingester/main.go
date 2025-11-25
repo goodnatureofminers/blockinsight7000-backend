@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/jessevdk/go-flags"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/repository"
@@ -25,6 +27,7 @@ type config struct {
 	RPCUser       string        `long:"rpc-user" env:"BTC_HISTORY_RPC_USER" description:"Bitcoin RPC username"`
 	RPCPassword   string        `long:"rpc-password" env:"BTC_HISTORY_RPC_PASSWORD" description:"Bitcoin RPC password"`
 	HTTPTimeout   time.Duration `long:"http-timeout" env:"BTC_HISTORY_HTTP_TIMEOUT" description:"HTTP timeout for RPC requests" default:"30s"`
+	MetricsAddr   string        `long:"metrics-addr" env:"BTC_HISTORY_METRICS_ADDR" description:"address for metrics server" default:":2112"`
 }
 
 func main() {
@@ -59,18 +62,21 @@ func main() {
 }
 
 func run(ctx context.Context, cfg config, logger *zap.Logger) error {
+	startMetricsServer(ctx, cfg.MetricsAddr, logger)
+
 	repo, err := repository.NewBTCRepository(cfg.ClickhouseDSN)
 	if err != nil {
 		return fmt.Errorf("init repository: %w", err)
 	}
-	rpc, err := newRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPassword, cfg.HTTPTimeout)
+	rpcClient, err := newRPCClient(cfg.RPCURL, cfg.RPCUser, cfg.RPCPassword, cfg.HTTPTimeout)
 	if err != nil {
 		return fmt.Errorf("init btc rpc client: %w", err)
 	}
 	defer func() {
-		rpc.Shutdown()
-		rpc.WaitForShutdown()
+		rpcClient.Shutdown()
+		rpcClient.WaitForShutdown()
 	}()
+	rpc := repository.NewBTCNodeRepository(rpcClient, cfg.Network)
 	svc, err := service.NewBTCHistorySyncService(
 		repo,
 		rpc,
@@ -81,6 +87,36 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		return err
 	}
 	return svc.Run(ctx)
+}
+
+func startMetricsServer(ctx context.Context, addr string, logger *zap.Logger) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	go func() {
+		logger.Info("starting metrics server", zap.String("addr", addr))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("metrics server failed", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			logger.Error("failed to shutdown metrics server", zap.Error(err))
+		}
+	}()
 }
 
 func newRPCClient(rawURL, user, password string, timeout time.Duration) (*rpcclient.Client, error) {

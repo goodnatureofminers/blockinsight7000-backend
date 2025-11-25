@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/metrics"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/model"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/model"
 )
 
 type BTCRepository struct {
@@ -33,6 +35,12 @@ func NewBTCRepository(dsn string) (*BTCRepository, error) {
 }
 
 func (r *BTCRepository) BlocksCount(ctx context.Context, network string) (uint64, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("blocks_count", network, err, start)
+	}()
+
 	const query = `
 SELECT toUInt64(max(height)) as height
 FROM btc_blocks
@@ -48,13 +56,19 @@ WHERE network = ?`
 		return 0, nil
 	}
 	var height uint64
-	if err := rows.Scan(&height); err != nil {
+	if err = rows.Scan(&height); err != nil {
 		return 0, fmt.Errorf("scan blocks count: %w", err)
 	}
 	return height, nil
 }
 
 func (r *BTCRepository) MinBlockHeight(ctx context.Context, network string) (uint64, bool, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("min_block_height", network, err, start)
+	}()
+
 	const query = `
 SELECT toUInt64(min(height)) as height, count() as cnt
 FROM btc_blocks
@@ -72,7 +86,7 @@ WHERE network = ?`
 
 	var height uint64
 	var cnt uint64
-	if err := rows.Scan(&height, &cnt); err != nil {
+	if err = rows.Scan(&height, &cnt); err != nil {
 		return 0, false, fmt.Errorf("scan min block height: %w", err)
 	}
 	if cnt == 0 {
@@ -82,6 +96,12 @@ WHERE network = ?`
 }
 
 func (r *BTCRepository) MaxBlockHeight(ctx context.Context, network string) (uint64, bool, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("max_block_height", network, err, start)
+	}()
+
 	const query = `
 SELECT toUInt64(max(height)) as height, count() as cnt
 FROM btc_blocks
@@ -99,7 +119,7 @@ WHERE network = ?`
 
 	var height uint64
 	var cnt uint64
-	if err := rows.Scan(&height, &cnt); err != nil {
+	if err = rows.Scan(&height, &cnt); err != nil {
 		return 0, false, fmt.Errorf("scan max block height: %w", err)
 	}
 	if cnt == 0 {
@@ -109,6 +129,12 @@ WHERE network = ?`
 }
 
 func (r *BTCRepository) RandomMissingBlockHeights(ctx context.Context, network string, maxHeight, limit uint64) ([]uint64, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("random_missing_block_heights", network, err, start)
+	}()
+
 	if limit == 0 {
 		return nil, nil
 	}
@@ -135,12 +161,12 @@ LIMIT ?`
 	var heights []uint64
 	for rows.Next() {
 		var height uint64
-		if err := rows.Scan(&height); err != nil {
+		if err = rows.Scan(&height); err != nil {
 			return nil, fmt.Errorf("scan random missing block height: %w", err)
 		}
 		heights = append(heights, height)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate random missing block heights: %w", err)
 	}
 
@@ -148,6 +174,12 @@ LIMIT ?`
 }
 
 func (r *BTCRepository) InsertBlocks(ctx context.Context, blocks []model.BTCBlock) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("insert_blocks", firstNetwork(blocks), err, start)
+	}()
+
 	if len(blocks) == 0 {
 		return nil
 	}
@@ -164,7 +196,7 @@ INSERT INTO btc_blocks (
 	nonce,
 	difficulty,
 	size,
-	tx_count
+tx_count
 ) VALUES`
 
 	batch, err := r.conn.PrepareBatch(ctx, query)
@@ -173,7 +205,7 @@ INSERT INTO btc_blocks (
 	}
 
 	for _, block := range blocks {
-		if err := batch.Append(
+		if err = batch.Append(
 			block.Network,
 			block.Height,
 			block.Hash,
@@ -190,13 +222,19 @@ INSERT INTO btc_blocks (
 		}
 	}
 
-	if err := batch.Send(); err != nil {
+	if err = batch.Send(); err != nil {
 		return fmt.Errorf("insert blocks: %w", err)
 	}
 	return nil
 }
 
 func (r *BTCRepository) InsertTransactions(ctx context.Context, txs []model.BTCTransaction) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("insert_transactions", firstNetwork(txs), err, start)
+	}()
+
 	if len(txs) == 0 {
 		return nil
 	}
@@ -212,7 +250,7 @@ INSERT INTO btc_transactions (
 	version,
 	locktime,
 	input_count,
-	output_count
+output_count
 ) VALUES`
 
 	batch, err := r.conn.PrepareBatch(ctx, query)
@@ -221,7 +259,7 @@ INSERT INTO btc_transactions (
 	}
 
 	for _, tx := range txs {
-		if err := batch.Append(
+		if err = batch.Append(
 			tx.Network,
 			tx.TxID,
 			tx.BlockHeight,
@@ -237,13 +275,19 @@ INSERT INTO btc_transactions (
 		}
 	}
 
-	if err := batch.Send(); err != nil {
+	if err = batch.Send(); err != nil {
 		return fmt.Errorf("insert transactions: %w", err)
 	}
 	return nil
 }
 
 func (r *BTCRepository) InsertTransactionInputs(ctx context.Context, inputs []model.BTCTransactionInput) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("insert_transaction_inputs", firstNetwork(inputs), err, start)
+	}()
+
 	if len(inputs) == 0 {
 		return nil
 	}
@@ -263,7 +307,7 @@ INSERT INTO btc_transaction_inputs (
 	script_sig_hex,
 	script_sig_asm,
 	witness,
-	addresses
+addresses
 ) VALUES`
 
 	batch, err := r.conn.PrepareBatch(ctx, query)
@@ -272,7 +316,7 @@ INSERT INTO btc_transaction_inputs (
 	}
 
 	for _, input := range inputs {
-		if err := batch.Append(
+		if err = batch.Append(
 			input.Network,
 			input.BlockHeight,
 			input.BlockTime,
@@ -292,13 +336,19 @@ INSERT INTO btc_transaction_inputs (
 		}
 	}
 
-	if err := batch.Send(); err != nil {
+	if err = batch.Send(); err != nil {
 		return fmt.Errorf("insert transaction inputs: %w", err)
 	}
 	return nil
 }
 
 func (r *BTCRepository) InsertTransactionOutputs(ctx context.Context, outputs []model.BTCTransactionOutput) error {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("insert_transaction_outputs", firstNetwork(outputs), err, start)
+	}()
+
 	if len(outputs) == 0 {
 		return nil
 	}
@@ -314,7 +364,7 @@ INSERT INTO btc_transaction_outputs (
 	script_type,
 	script_hex,
 	script_asm,
-	addresses
+addresses
 ) VALUES`
 
 	batch, err := r.conn.PrepareBatch(ctx, query)
@@ -323,7 +373,7 @@ INSERT INTO btc_transaction_outputs (
 	}
 
 	for _, output := range outputs {
-		if err := batch.Append(
+		if err = batch.Append(
 			output.Network,
 			output.BlockHeight,
 			output.BlockTime,
@@ -339,13 +389,19 @@ INSERT INTO btc_transaction_outputs (
 		}
 	}
 
-	if err := batch.Send(); err != nil {
+	if err = batch.Send(); err != nil {
 		return fmt.Errorf("insert transaction outputs: %w", err)
 	}
 	return nil
 }
 
 func (r *BTCRepository) TransactionOutputs(ctx context.Context, network, txid string) ([]model.BTCTransactionOutput, error) {
+	start := time.Now()
+	var err error
+	defer func() {
+		metrics.ObserveBTCRepository("transaction_outputs", network, err, start)
+	}()
+
 	const query = `
 SELECT
 	block_height,
@@ -371,7 +427,7 @@ ORDER BY output_index ASC`
 		var output model.BTCTransactionOutput
 		output.Network = network
 		output.TxID = txid
-		if err := rows.Scan(
+		if err = rows.Scan(
 			&output.BlockHeight,
 			&output.BlockTime,
 			&output.Index,
@@ -387,9 +443,28 @@ ORDER BY output_index ASC`
 		outputs = append(outputs, output)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate transaction outputs: %w", err)
 	}
 
 	return outputs, nil
+}
+
+func firstNetwork[T any](items []T) string {
+	if len(items) == 0 {
+		return ""
+	}
+
+	switch v := any(items[0]).(type) {
+	case model.BTCBlock:
+		return v.Network
+	case model.BTCTransaction:
+		return v.Network
+	case model.BTCTransactionInput:
+		return v.Network
+	case model.BTCTransactionOutput:
+		return v.Network
+	default:
+		return ""
+	}
 }

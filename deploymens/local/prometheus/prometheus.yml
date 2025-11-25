@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+  - job_name: btc-history-ingester-0
+    static_configs:
+      - targets:
+          - btc-history-ingester:2112
+  - job_name: btc-history-ingester-1
+    static_configs:
+      - targets:
+          - btc-history-ingester-1:2112
+  - job_name: btc-history-ingester-2
+    static_configs:
+      - targets:
+          - btc-history-ingester-2:2112
+  - job_name: btc-history-ingester-3
+    static_configs:
+      - targets:
+          - btc-history-ingester-3:2112
+  - job_name: clickhouse
+    static_configs:
+      - targets:
+          - clickhouse:9363
