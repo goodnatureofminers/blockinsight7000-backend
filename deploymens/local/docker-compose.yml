@@ -86,14 +86,30 @@ services:
   btc-history-ingester:
     build:
       context: ../..
-      dockerfile: build/btc-history-ingester.Dockerfile
+      dockerfile: ./build/utxo.Dockerfile
     container_name: btc-history-ingester
+    entrypoint:
+      - /usr/bin/utxo-history-ingester
     restart: unless-stopped
     depends_on:
       - clickhouse
       - bitcoind-testnet
     env_file:
       - ./envs/.env.btc-history-ingester
+
+  btc-backfill-ingester:
+    build:
+      context: ../..
+      dockerfile: ./build/utxo.Dockerfile
+    container_name: btc-backfill-ingester
+    entrypoint:
+      - /usr/bin/utxo-backfill-ingester
+    restart: unless-stopped
+    depends_on:
+      - clickhouse
+      - bitcoind-testnet
+    env_file:
+      - ./envs/.env.btc-backfill-ingester
 
 volumes:
   clickhouse_data:

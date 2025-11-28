@@ -1,0 +1,49 @@
+package model
+
+import "time"
+
+type Transaction struct {
+	Coin        Coin
+	Network     Network
+	TxID        string
+	BlockHeight uint64
+	Timestamp   time.Time
+	Size        uint32
+	VSize       uint32
+	Version     uint32
+	LockTime    uint32
+	InputCount  uint16
+	OutputCount uint16
+}
+
+type TransactionInput struct {
+	Coin         Coin
+	Network      Network
+	BlockHeight  uint64
+	BlockTime    time.Time
+	TxID         string
+	Index        uint32
+	PrevTxID     string
+	PrevVout     uint32
+	Sequence     uint32
+	IsCoinbase   bool
+	Value        uint64
+	ScriptSigHex string
+	ScriptSigAsm string
+	Witness      []string
+	Addresses    []string
+}
+
+type TransactionOutput struct {
+	Coin        Coin
+	Network     Network
+	BlockHeight uint64
+	BlockTime   time.Time
+	TxID        string
+	Index       uint32
+	Value       uint64
+	ScriptType  string
+	ScriptHex   string
+	ScriptAsm   string
+	Addresses   []string
+}
