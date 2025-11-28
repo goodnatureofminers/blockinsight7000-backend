@@ -13,10 +13,10 @@ import (
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/metrics"
-	rpcclient2 "github.com/goodnatureofminers/blockinsight7000-backend/internal/pkg/btcd/rpcclient"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service"
+	rpcclient2 "github.com/goodnatureofminers/blockinsight7000-backend/pkg/btcd/rpcclient"
 	"github.com/jessevdk/go-flags"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"

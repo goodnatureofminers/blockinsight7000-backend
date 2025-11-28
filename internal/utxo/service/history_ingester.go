@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/pkg/batcher"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utils"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
+	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/batcher"
 	"go.uber.org/zap"
 )
 
