@@ -7,22 +7,22 @@ scrape_configs:
     static_configs:
       - targets:
           - prometheus:9090
-  - job_name: btc-history-ingester-0
+  - job_name: utxo-history-ingester-0
     static_configs:
       - targets:
-          - btc-history-ingester:2112
-  - job_name: btc-history-ingester-1
+          - utxo-history-ingester:2112
+  - job_name: utxo-history-ingester-1
     static_configs:
       - targets:
-          - btc-history-ingester-1:2112
-  - job_name: btc-history-ingester-2
+          - utxo-history-ingester-1:2112
+  - job_name: utxo-history-ingester-2
     static_configs:
       - targets:
-          - btc-history-ingester-2:2112
-  - job_name: btc-history-ingester-3
+          - utxo-history-ingester-2:2112
+  - job_name: utxo-history-ingester-3
     static_configs:
       - targets:
-          - btc-history-ingester-3:2112
+          - utxo-history-ingester-3:2112
   - job_name: clickhouse
     static_configs:
       - targets:
