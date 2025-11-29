@@ -3,12 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"math"
 	"sync"
-	"time"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utils"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/clock"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/batcher"
 	"go.uber.org/zap"
@@ -22,35 +20,28 @@ const (
 
 type BackfillIngesterService struct {
 	repo         ClickhouseRepository
-	rpc          RpcClient
+	source       chain.BackfillSource
 	logger       *zap.Logger
 	coin         model.Coin
 	network      model.Network
-	decoder      *scriptDecoder
 	blockBatcher *batcher.Batcher[model.InsertBlock]
 	workerCount  int
 }
 
 func NewBackfillIngesterService(
 	repo ClickhouseRepository,
-	rpc RpcClient,
+	source chain.BackfillSource,
 	coin model.Coin,
 	network model.Network,
 	logger *zap.Logger,
 ) (*BackfillIngesterService, error) {
 
-	decoder, err := newScriptDecoder(network)
-	if err != nil {
-		return nil, err
-	}
-
 	return &BackfillIngesterService{
 		repo:        repo,
-		rpc:         rpc,
+		source:      source,
 		logger:      logger,
 		coin:        coin,
 		network:     network,
-		decoder:     decoder,
 		workerCount: defaultBackfillIngesterWorkerCount,
 		blockBatcher: batcher.New[model.InsertBlock](
 			logger.Named("blockBatcher"),
@@ -61,7 +52,7 @@ func NewBackfillIngesterService(
 					blocks = append(blocks, block.Block)
 					inputs = append(inputs, block.Inputs...)
 					if len(inputs) >= inputFlushThreshold {
-						err = repo.InsertTransactionInputs(ctx, inputs)
+						err := repo.InsertTransactionInputs(ctx, inputs)
 						if err != nil {
 							return err
 						}
@@ -69,7 +60,7 @@ func NewBackfillIngesterService(
 						inputs = make([]model.TransactionInput, 0, len(insertBlocks))
 					}
 				}
-				err = repo.InsertTransactionInputs(ctx, inputs)
+				err := repo.InsertTransactionInputs(ctx, inputs)
 				if err != nil {
 					return err
 				}
@@ -92,19 +83,19 @@ func (s *BackfillIngesterService) Run(ctx context.Context) error {
 			return err
 		}
 
-		maxHaight, err := s.repo.MaxContiguousBlockHeight(ctx, s.coin, s.network)
+		maxHeight, err := s.repo.MaxContiguousBlockHeight(ctx, s.coin, s.network)
 		if err != nil {
 			return err
 		}
 
-		heights, err := s.repo.RandomUnprocessedBlockHeights(ctx, s.coin, s.network, maxHaight, randomUnprocessedHeightsLimit)
+		heights, err := s.repo.RandomUnprocessedBlockHeights(ctx, s.coin, s.network, maxHeight, randomUnprocessedHeightsLimit)
 		if err != nil {
 			return err
 		}
 
 		if len(heights) == 0 {
 			s.logger.Info("no missing block heights; going idle", zap.Duration("sleep", idleSleepDuration))
-			if err := utils.SleepWithContext(ctx, idleSleepDuration); err != nil {
+			if err := clock.SleepWithContext(ctx, idleSleepDuration); err != nil {
 				return err
 			}
 			continue
@@ -117,7 +108,7 @@ func (s *BackfillIngesterService) Run(ctx context.Context) error {
 			return err
 		}
 		s.logger.Info("completed sync batch", zap.Duration("sleep", postBatchSleepDuration))
-		if err := utils.SleepWithContext(ctx, postBatchSleepDuration); err != nil {
+		if err := clock.SleepWithContext(ctx, postBatchSleepDuration); err != nil {
 			return err
 		}
 	}
@@ -176,138 +167,15 @@ func (s *BackfillIngesterService) processBlock(
 	ctx context.Context,
 	height uint64,
 ) error {
-	hash, err := s.rpc.GetBlockHash(int64(height))
+	block, err := s.source.FetchBlock(ctx, height)
 	if err != nil {
-		return fmt.Errorf("get block hash at height %d: %w", height, err)
-	}
-	src, err := s.rpc.GetBlockVerboseTx(hash)
-	if err != nil {
-		return fmt.Errorf("get block %s: %w", hash, err)
-	}
-
-	bits, err := utils.ParseBits(src.Bits)
-	if err != nil {
-		return fmt.Errorf("block %d bits parse: %w", src.Height, err)
-	}
-	if src.Height > math.MaxUint32 {
-		return fmt.Errorf("block height %d exceeds uint32", src.Height)
-	}
-	if src.Size < 0 {
-		return fmt.Errorf("block %d negative size: %d", src.Height, src.Size)
-	}
-
-	timestamp := time.Unix(src.Time, 0).UTC()
-	block := model.Block{
-		Coin:       s.coin,
-		Network:    s.network,
-		Height:     uint64(src.Height),
-		Hash:       src.Hash,
-		Timestamp:  timestamp,
-		Version:    uint32(src.Version),
-		MerkleRoot: src.MerkleRoot,
-		Bits:       bits,
-		Nonce:      src.Nonce,
-		Difficulty: src.Difficulty,
-		Size:       uint32(src.Size),
-		TXCount:    uint32(len(src.Tx)),
-		Status:     model.BlockProcessed,
-	}
-
-	resolver := newTransactionOutputResolver(s.repo, s.coin, s.network)
-
-	totalOutputs := 0
-	totalInputs := 0
-	for _, tx := range src.Tx {
-		totalOutputs += len(tx.Vout)
-		totalInputs += len(tx.Vin)
-	}
-
-	inputs := make([]model.TransactionInput, 0, totalInputs)
-
-	for _, tx := range src.Tx {
-
-		if len(tx.Vin) > math.MaxUint16 {
-			return fmt.Errorf("tx %s vin count overflow: %d", tx.Txid, len(tx.Vin))
-		}
-		if len(tx.Vout) > math.MaxUint16 {
-			return fmt.Errorf("tx %s vout count overflow: %d", tx.Txid, len(tx.Vout))
-		}
-		if tx.Size < 0 {
-			return fmt.Errorf("tx %s negative size: %d", tx.Txid, tx.Size)
-		}
-		if tx.Vsize < 0 {
-			return fmt.Errorf("tx %s negative vsize: %d", tx.Txid, tx.Vsize)
-		}
-
-		txInputs, err := convertInputs(ctx, resolver, tx, s.coin, s.network, block.Height, timestamp)
-		if err != nil {
-			return err
-		}
-		inputs = append(inputs, txInputs...)
+		return fmt.Errorf("fetch block %d: %w", height, err)
 	}
 
 	s.blockBatcher.Add(model.InsertBlock{
-		Block:  block,
-		Inputs: inputs,
+		Block:  block.Block,
+		Inputs: block.Inputs,
 	})
 
 	return nil
-}
-
-func convertInputs(
-	ctx context.Context,
-	resolver *transactionOutputResolver,
-	tx btcjson.TxRawResult,
-	coin model.Coin,
-	network model.Network,
-	blockHeight uint64,
-	blockTime time.Time,
-) ([]model.TransactionInput, error) {
-	inputs := make([]model.TransactionInput, 0, len(tx.Vin))
-
-	for idx, vin := range tx.Vin {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-
-		scriptHex := ""
-		scriptAsm := ""
-		if vin.ScriptSig != nil {
-			scriptHex = vin.ScriptSig.Hex
-			scriptAsm = vin.ScriptSig.Asm
-		}
-
-		input := model.TransactionInput{
-			Coin:         coin,
-			Network:      network,
-			BlockHeight:  blockHeight,
-			BlockTime:    blockTime,
-			TxID:         tx.Txid,
-			Index:        uint32(idx),
-			PrevTxID:     vin.Txid,
-			PrevVout:     vin.Vout,
-			Sequence:     vin.Sequence,
-			IsCoinbase:   vin.IsCoinBase(),
-			ScriptSigHex: scriptHex,
-			ScriptSigAsm: scriptAsm,
-			Witness:      append([]string(nil), vin.Witness...),
-		}
-
-		if !vin.IsCoinBase() {
-			prevOutputs, err := resolver.Resolve(ctx, vin.Txid)
-			if err != nil {
-				return nil, fmt.Errorf("resolve prev outputs for tx %s: %w", vin.Txid, err)
-			}
-			if int(vin.Vout) >= len(prevOutputs) {
-				return nil, fmt.Errorf("input references missing vout %d in tx %s", vin.Vout, vin.Txid)
-			}
-			prevOut := prevOutputs[vin.Vout]
-			input.Value = prevOut.Value
-			input.Addresses = append([]string(nil), prevOut.Addresses...)
-		}
-
-		inputs = append(inputs, input)
-	}
-
-	return inputs, nil
 }

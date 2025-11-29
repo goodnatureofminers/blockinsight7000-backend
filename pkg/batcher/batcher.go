@@ -82,7 +82,6 @@ func (b *Batcher[T]) run(ctx context.Context) {
 
 		case item := <-b.itemsCh:
 			buf = append(buf, item)
-			//b.logger.Debug("test", zap.Int("size", len(buf)))
 			if len(buf) >= b.flushSize {
 				flush()
 			}

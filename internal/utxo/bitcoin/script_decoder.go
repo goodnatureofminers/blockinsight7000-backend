@@ -1,4 +1,4 @@
-package service
+package bitcoin
 
 import (
 	"encoding/hex"

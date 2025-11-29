@@ -13,10 +13,10 @@ import (
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/metrics"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/bitcoin"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service"
-	rpcclient2 "github.com/goodnatureofminers/blockinsight7000-backend/pkg/btcd/rpcclient"
 	"github.com/jessevdk/go-flags"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -79,10 +79,14 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpcClient.Shutdown()
 		rpcClient.WaitForShutdown()
 	}()
-	rpc := rpcclient2.NewObservedClient(rpcClient, metrics.NewRpcClient(cfg.Coin, cfg.Network))
+	rpc := bitcoin.NewRpcClient(rpcClient, metrics.NewRpcClient(cfg.Coin, cfg.Network))
+	source, err := bitcoin.NewHistorySource(rpc, cfg.Coin, cfg.Network)
+	if err != nil {
+		return fmt.Errorf("init bitcoin history source: %w", err)
+	}
 	svc, err := service.NewHistoryIngesterService(
 		repo,
-		rpc,
+		source,
 		cfg.Coin,
 		cfg.Network,
 		logger,

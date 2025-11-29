@@ -1,4 +1,4 @@
-package utils
+package bitcoin
 
 import (
 	"fmt"
