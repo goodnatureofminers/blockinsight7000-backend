@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/metrics"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/bitcoin"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service"
@@ -80,7 +81,8 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpcClient.WaitForShutdown()
 	}()
 	rpc := bitcoin.NewRpcClient(rpcClient, metrics.NewRpcClient(cfg.Coin, cfg.Network))
-	source, err := bitcoin.NewBackfillSource(repo, rpc, cfg.Coin, cfg.Network)
+	resolverFactory := chain.NewTransactionOutputResolverFactory(repo, cfg.Coin, cfg.Network)
+	source, err := bitcoin.NewBackfillSource(resolverFactory, rpc, cfg.Coin, cfg.Network)
 	if err != nil {
 		return fmt.Errorf("init bitcoin backfill source: %w", err)
 	}

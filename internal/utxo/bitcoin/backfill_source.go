@@ -13,19 +13,19 @@ import (
 
 // BackfillSource implements chain.BackfillSource for Bitcoin.
 type BackfillSource struct {
-	repo    chain.ClickhouseRepository
-	rpc     *RpcClient
-	decoder *scriptDecoder
-	coin    model.Coin
-	network model.Network
+	resolverFactory TransactionOutputResolverFactory
+	rpc             *RpcClient
+	decoder         *scriptDecoder
+	coin            model.Coin
+	network         model.Network
 }
 
-func NewBackfillSource(repo chain.ClickhouseRepository, rpc *RpcClient, coin model.Coin, network model.Network) (*BackfillSource, error) {
+func NewBackfillSource(resolverFactory TransactionOutputResolverFactory, rpc *RpcClient, coin model.Coin, network model.Network) (*BackfillSource, error) {
 	decoder, err := newScriptDecoder(network)
 	if err != nil {
 		return nil, err
 	}
-	return &BackfillSource{repo: repo, rpc: rpc, decoder: decoder, coin: coin, network: network}, nil
+	return &BackfillSource{resolverFactory: resolverFactory, rpc: rpc, decoder: decoder, coin: coin, network: network}, nil
 }
 
 func (s *BackfillSource) LatestHeight(_ context.Context) (uint64, error) {
@@ -48,7 +48,7 @@ func (s *BackfillSource) FetchBlock(ctx context.Context, height uint64) (*chain.
 		return nil, err
 	}
 
-	resolver := chain.NewTransactionOutputResolver(s.repo, s.coin, s.network)
+	resolver := s.resolverFactory.New()
 	inputs := make([]model.TransactionInput, 0)
 
 	for _, tx := range src.Tx {

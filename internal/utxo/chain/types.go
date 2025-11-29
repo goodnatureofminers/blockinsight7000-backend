@@ -6,25 +6,11 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-// HistorySource provides block data required for historical ingestion (blocks, txs, outputs).
-type HistorySource interface {
-	LatestHeight(ctx context.Context) (uint64, error)
-	FetchBlock(ctx context.Context, height uint64) (*HistoryBlock, error)
-}
+//go:generate mockgen -source=$GOFILE -destination=mocks_test.go -package=$GOPACKAGE
 
-// BackfillSource provides block data required for backfill ingestion (blocks, inputs).
-type BackfillSource interface {
-	LatestHeight(ctx context.Context) (uint64, error)
-	FetchBlock(ctx context.Context, height uint64) (*BackfillBlock, error)
-}
-
-type HistoryBlock struct {
-	Block   model.Block
-	Txs     []model.Transaction
-	Outputs []model.TransactionOutput
-}
-
-type BackfillBlock struct {
-	Block  model.Block
-	Inputs []model.TransactionInput
-}
+// ClickhouseRepository describes the persistence operations the ingesters need.
+type (
+	ClickhouseRepository interface {
+		TransactionOutputs(ctx context.Context, coin model.Coin, network model.Network, txid string) ([]model.TransactionOutput, error)
+	}
+)
