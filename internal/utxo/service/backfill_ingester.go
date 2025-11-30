@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/clock"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
@@ -16,6 +17,14 @@ const (
 	defaultBackfillIngesterWorkerCount = 50
 	randomUnprocessedHeightsLimit      = 10000
 	inputFlushThreshold                = 1000
+)
+
+const (
+	blockBatcherCapacity      = 500
+	blockBatcherFlushInterval = 30 * time.Second
+	blockBatcherWorkerCount   = 1
+	idleSleepDuration         = 5 * time.Second
+	postBatchSleepDuration    = 5 * time.Second
 )
 
 type BackfillIngesterService struct {
@@ -172,10 +181,8 @@ func (s *BackfillIngesterService) processBlock(
 		return fmt.Errorf("fetch block %d: %w", height, err)
 	}
 
-	s.blockBatcher.Add(model.InsertBlock{
+	return s.blockBatcher.Add(ctx, model.InsertBlock{
 		Block:  block.Block,
 		Inputs: block.Inputs,
 	})
-
-	return nil
 }
