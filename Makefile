@@ -14,7 +14,7 @@ BTC_INGESTER_ENV ?= $(LOCAL_DEPLOY_DIR)/envs/.env.btc-ingester
 BTC_HISTORY_ENV ?= $(LOCAL_DEPLOY_DIR)/envs/.env.btc-history-ingester
 MIGRATIONS_ENV ?= $(LOCAL_DEPLOY_DIR)/envs/.env.clickhouse-migrations
 
-.PHONY: local-stack-up local-stack-down run-api-gateway run-btc-ingester run-btc-history-sync run-clickhouse-migration lint lint-install lint-docker
+.PHONY: local-stack-up local-stack-down run-api-gateway run-btc-ingester run-btc-history-sync run-clickhouse-migration lint lint-install lint-docker coverage
 
 local-stack-up:
 	@echo "Starting local docker compose stack: $(LOCAL_COMPOSE_FILE)"
@@ -38,3 +38,30 @@ lint-docker:
 		-w /app \
 		$(GOLANGCI_LINT_IMAGE) \
 		golangci-lint run ./...
+
+coverage:
+	@echo "Running tests with coverage (coverage.out + coverage.svg)"
+	@$(GO) test ./... -covermode=atomic -coverprofile=coverage.out
+	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ {print substr($$3,1,length($$3)-1)}'); \
+	pct=$${total%.*}; \
+	color="#4c1"; \
+	if [ "$$pct" -lt 60 ]; then \
+		color="#e05d44"; \
+	elif [ "$$pct" -lt 80 ]; then \
+		color="#dfb317"; \
+	fi; \
+	cat > coverage.svg <<EOF \
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20" role="img" aria-label="coverage: $${total}%"> \
+  <linearGradient id="s" x2="0" y2="100%"> \
+    <stop offset="0" stop-color="#fff" stop-opacity=".7"/> \
+    <stop offset=".1" stop-opacity=".1"/> \
+  </linearGradient> \
+  <rect rx="3" width="120" height="20" fill="#555"/> \
+  <rect rx="3" x="60" width="60" height="20" fill="$${color}"/> \
+  <rect rx="3" width="120" height="20" fill="url(#s)"/> \
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11"> \
+    <text x="30" y="14">coverage</text> \
+    <text x="90" y="14">$${total}%</text> \
+  </g> \
+</svg> \
+EOF
