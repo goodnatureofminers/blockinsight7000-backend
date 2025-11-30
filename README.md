@@ -1,5 +1,7 @@
 # BlockInsight7000 Backend
 
+![Coverage](https://raw.githubusercontent.com/goodnatureofminers/blockinsight7000-backend/main/coverage.svg)
+
 Backend for a blockchain explorer: ingests chain data (currently Bitcoin) into ClickHouse and serves it via gRPC/REST APIs with Prometheus metrics.
 
 ## Prerequisites
