@@ -16,7 +16,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/bitcoin"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service/history_ingestor"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service/ingester"
 	"github.com/jessevdk/go-flags"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -85,7 +85,7 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		return fmt.Errorf("init bitcoin history source: %w", err)
 	}
 	historyIngesterMetrics := metrics.NewHistoryIngester(cfg.Coin, cfg.Network)
-	svc, err := history_ingestor.NewHistoryIngesterService(
+	svc, err := ingester.NewHistoryIngesterService(
 		repo,
 		source,
 		historyIngesterMetrics,

@@ -1,4 +1,4 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
@@ -38,7 +38,7 @@ func TestHistoryIngesterService_run(t *testing.T) {
 				metrics := NewMockHistoryIngesterMetrics(ctrl)
 				ctx := context.Background()
 
-				hf.EXPECT().FetchMissing(ctx).Return([]uint64{10, 11}, nil)
+				hf.EXPECT().Fetch(ctx).Return([]uint64{10, 11}, nil)
 				metrics.EXPECT().ObserveFetchMissing(nil, gomock.Any())
 				bp.EXPECT().Process(ctx, []uint64{10, 11}).Return(nil)
 				metrics.EXPECT().ObserveProcessBatch(nil, 2, gomock.Any())
@@ -68,7 +68,7 @@ func TestHistoryIngesterService_run(t *testing.T) {
 					return nil
 				}
 
-				hf.EXPECT().FetchMissing(ctx).Return([]uint64{}, nil)
+				hf.EXPECT().Fetch(ctx).Return([]uint64{}, nil)
 				metrics.EXPECT().ObserveFetchMissing(nil, gomock.Any())
 
 				return fields{
@@ -92,7 +92,7 @@ func TestHistoryIngesterService_run(t *testing.T) {
 				ctx := context.Background()
 				fetchErr := errors.New("fetch error")
 
-				hf.EXPECT().FetchMissing(ctx).Return(nil, fetchErr)
+				hf.EXPECT().Fetch(ctx).Return(nil, fetchErr)
 				metrics.EXPECT().ObserveFetchMissing(fetchErr, gomock.Any())
 
 				return fields{
@@ -117,7 +117,7 @@ func TestHistoryIngesterService_run(t *testing.T) {
 				ctx := context.Background()
 				processErr := errors.New("process error")
 
-				hf.EXPECT().FetchMissing(ctx).Return([]uint64{1}, nil)
+				hf.EXPECT().Fetch(ctx).Return([]uint64{1}, nil)
 				metrics.EXPECT().ObserveFetchMissing(nil, gomock.Any())
 				bp.EXPECT().Process(ctx, []uint64{1}).Return(processErr)
 				metrics.EXPECT().ObserveProcessBatch(processErr, 1, gomock.Any())
@@ -172,7 +172,7 @@ func TestHistoryIngesterService_Run_ContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	bp.EXPECT().SetCancelBatcher(gomock.Any()).Times(1)
+	bp.EXPECT().SetCancel(gomock.Any()).Times(1)
 	bw.EXPECT().Start(gomock.Any()).Times(1)
 	bw.EXPECT().Stop().Times(1)
 

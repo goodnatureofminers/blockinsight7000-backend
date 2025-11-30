@@ -17,7 +17,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service"
+	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service/ingester"
 	"github.com/jessevdk/go-flags"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -86,9 +86,11 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 	if err != nil {
 		return fmt.Errorf("init bitcoin backfill source: %w", err)
 	}
-	svc, err := service.NewBackfillIngesterService(
+	backfillMetrics := metrics.NewBackfillIngester(cfg.Coin, cfg.Network)
+	svc, err := ingester.NewBackfillIngesterService(
 		repo,
 		source,
+		backfillMetrics,
 		cfg.Coin,
 		cfg.Network,
 		logger,
