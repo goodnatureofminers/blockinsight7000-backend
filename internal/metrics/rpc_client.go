@@ -24,22 +24,25 @@ var (
 	}, []string{"operation", "coin", "network", "status"})
 )
 
-type RpcClient struct {
+// RPCClient tracks metrics for RPC calls to blockchain nodes.
+type RPCClient struct {
 	coin    model.Coin
 	network model.Network
 }
 
-func NewRpcClient(coin model.Coin, network model.Network) *RpcClient {
+// NewRPCClient constructs a metrics collector for RPC calls.
+func NewRPCClient(coin model.Coin, network model.Network) *RPCClient {
 	if coin == "" {
 		coin = "unknown"
 	}
 	if network == "" {
 		network = "unknown"
 	}
-	return &RpcClient{coin: coin, network: network}
+	return &RPCClient{coin: coin, network: network}
 }
 
-func (m RpcClient) Observe(operation string, err error, started time.Time) {
+// Observe records a single RPC call outcome and duration.
+func (m RPCClient) Observe(operation string, err error, started time.Time) {
 	status := "success"
 	if err != nil {
 		status = "error"

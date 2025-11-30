@@ -8,6 +8,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
+// InsertTransactionOutputs stores transaction outputs in ClickHouse.
 func (r *Repository) InsertTransactionOutputs(ctx context.Context, outputs []model.TransactionOutput) error {
 	start := time.Now()
 	var err error

@@ -1,3 +1,4 @@
+// Package clickhouse provides ClickHouse repository implementations.
 package clickhouse
 
 import (
@@ -10,16 +11,19 @@ import (
 )
 
 type (
+	// Metrics records repository operation metrics.
 	Metrics interface {
 		Observe(operation string, coin model.Coin, network model.Network, err error, started time.Time)
 	}
 )
 
+// Repository implements ClickHouse-backed storage for UTXO data.
 type Repository struct {
 	conn    clickhouse.Conn
 	metrics Metrics
 }
 
+// NewRepository initializes a ClickHouse repository with metrics.
 func NewRepository(dsn string, metrics Metrics) (*Repository, error) {
 	if dsn == "" {
 		return nil, errors.New("clickhouse dsn is required")

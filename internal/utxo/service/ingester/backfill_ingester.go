@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// BackfillIngesterService orchestrates backfill processing of blockchain data.
 type BackfillIngesterService struct {
 	logger                 *zap.Logger
 	coin                   model.Coin
@@ -23,6 +24,7 @@ type BackfillIngesterService struct {
 	blockWriter            BlockWriter
 }
 
+// NewBackfillIngesterService builds a BackfillIngesterService wired with dependencies.
 func NewBackfillIngesterService(
 	repo ClickhouseRepository,
 	source BackfillSource,
@@ -67,6 +69,7 @@ func NewBackfillIngesterService(
 	}, nil
 }
 
+// Run starts the backfill ingestion loop until the context is canceled.
 func (s *BackfillIngesterService) Run(ctx context.Context) error {
 	bwCtx, bwCancel := context.WithCancel(ctx)
 	s.blockProcessor.SetCancel(bwCancel)

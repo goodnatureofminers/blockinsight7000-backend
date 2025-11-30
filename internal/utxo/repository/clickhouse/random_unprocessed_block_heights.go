@@ -8,6 +8,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
+// RandomUnprocessedBlockHeights returns random unprocessed heights up to maxHeight.
 func (r *Repository) RandomUnprocessedBlockHeights(ctx context.Context, coin model.Coin, network model.Network, maxHeight, limit uint64) ([]uint64, error) {
 	start := time.Now()
 	var err error
@@ -36,7 +37,11 @@ LIMIT ?;`
 	if err != nil {
 		return nil, fmt.Errorf("query random unprocessed block heights: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close rows: %w", closeErr)
+		}
+	}()
 
 	var heights []uint64
 	for rows.Next() {

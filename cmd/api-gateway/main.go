@@ -1,3 +1,4 @@
+// Package main starts the API gateway server.
 package main
 
 import (
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/transport"
-	"github.com/goodnatureofminers/blockinsight7000-proto/pkg/blockinsight7000/v1"
+	blockinsight7000v1 "github.com/goodnatureofminers/blockinsight7000-proto/pkg/blockinsight7000/v1"
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpcRecovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"

@@ -1,14 +1,19 @@
+// Package model defines domain models for UTXO ingestion.
 package model
 
 import "time"
 
+// BlockStatus describes processing status of a block record.
 type BlockStatus string
 
 var (
+	// BlockUnprocessed marks a block that has not been ingested yet.
 	BlockUnprocessed BlockStatus = "unprocessed"
-	BlockProcessed   BlockStatus = "processed"
+	// BlockProcessed marks a block that has been fully ingested.
+	BlockProcessed BlockStatus = "processed"
 )
 
+// Block represents a blockchain block persisted to ClickHouse.
 type Block struct {
 	Coin       Coin
 	Network    Network

@@ -8,6 +8,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
+// InsertBlocks stores block rows in ClickHouse.
 func (r *Repository) InsertBlocks(ctx context.Context, blocks []model.Block) error {
 	start := time.Now()
 	var err error

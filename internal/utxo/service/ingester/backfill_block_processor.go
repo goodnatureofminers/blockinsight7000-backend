@@ -1,3 +1,4 @@
+// Package ingester contains services for blockchain ingestion.
 package ingester
 
 import (

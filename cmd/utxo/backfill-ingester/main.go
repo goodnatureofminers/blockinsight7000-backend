@@ -1,3 +1,4 @@
+// Package main runs the backfill ingester service.
 package main
 
 import (
@@ -80,7 +81,7 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpcClient.Shutdown()
 		rpcClient.WaitForShutdown()
 	}()
-	rpc := bitcoin.NewRpcClient(rpcClient, metrics.NewRpcClient(cfg.Coin, cfg.Network))
+	rpc := bitcoin.NewRPCClient(rpcClient, metrics.NewRPCClient(cfg.Coin, cfg.Network))
 	resolverFactory := chain.NewTransactionOutputResolverFactory(repo, cfg.Coin, cfg.Network)
 	source, err := bitcoin.NewBackfillSource(resolverFactory, rpc, cfg.Coin, cfg.Network)
 	if err != nil {
@@ -131,7 +132,7 @@ func startMetricsServer(ctx context.Context, addr string, logger *zap.Logger) {
 	}()
 }
 
-func newRPCClient(rawURL, user, password string, timeout time.Duration) (*rpcclient.Client, error) {
+func newRPCClient(rawURL, user, password string, _ time.Duration) (*rpcclient.Client, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse rpc url: %w", err)
@@ -150,9 +151,9 @@ func newRPCClient(rawURL, user, password string, timeout time.Duration) (*rpccli
 		HTTPPostMode: true,
 		DisableTLS:   true,
 	}
-	//if timeout > 0 {
-	//	HTTPTimeout = timeout
-	//}
+	// if timeout > 0 {
+	// 	HTTPTimeout = timeout
+	// }
 
 	return rpcclient.New(cfg, nil)
 }

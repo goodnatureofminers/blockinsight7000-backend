@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// HistoryIngesterService orchestrates historical block ingestion.
 type HistoryIngesterService struct {
 	logger            *zap.Logger
 	coin              model.Coin
@@ -23,6 +24,7 @@ type HistoryIngesterService struct {
 	blockWriter       BlockWriter
 }
 
+// NewHistoryIngesterService builds a HistoryIngesterService with the given dependencies.
 func NewHistoryIngesterService(
 	repo ClickhouseRepository,
 	source HistorySource,
@@ -67,6 +69,7 @@ func NewHistoryIngesterService(
 	}, nil
 }
 
+// Run starts the history ingestion loop until the context is canceled.
 func (s *HistoryIngesterService) Run(ctx context.Context) error {
 	bwCtx, bwCancel := context.WithCancel(ctx)
 	s.blockProcessor.SetCancel(bwCancel)

@@ -7,3 +7,6 @@ Backend for a blockchain explorer: ingests chain data (currently Bitcoin) into C
 - ClickHouse reachable via DSN.
 - Bitcoin Core (or compatible) RPC endpoint for UTXO data.
 - Prometheus/Grafana optional for metrics consumption.
+
+## Development
+- Run linters in Docker (no local install needed): `make lint-docker`.

@@ -3,6 +3,7 @@ package workerpool
 import (
 	"context"
 	"errors"
+	"math"
 	"sync/atomic"
 	"testing"
 )
@@ -12,15 +13,12 @@ func TestProcess(t *testing.T) {
 		ctx         context.Context
 		workerCount int
 		items       []T
-		process     func(context.Context, T) error
-		onCancel    func()
 	}
 	type testCase[T any] struct {
-		name          string
-		args          args[T]
-		wantErr       bool
-		expectCancel  bool
-		expectHandled func(t *testing.T)
+		name         string
+		args         args[T]
+		wantErr      bool
+		expectCancel bool
 	}
 	tests := []testCase[int]{
 		{
@@ -29,9 +27,6 @@ func TestProcess(t *testing.T) {
 				ctx:         context.Background(),
 				workerCount: 2,
 				items:       []int{1, 2, 3, 4},
-			},
-			expectHandled: func(t *testing.T) {
-				// verified via closure below
 			},
 		},
 		{
@@ -67,14 +62,11 @@ func TestProcess(t *testing.T) {
 			var canceled int32
 
 			// Bind per-test functions
-			process := func(ctx context.Context, v int) error {
-				switch tt.name {
-				case "error cancels workers and calls onCancel":
-					if v == 2 {
-						return errors.New("boom")
-					}
+			process := func(_ context.Context, v int) error {
+				if tt.name == "error cancels workers and calls onCancel" && v == 2 {
+					return errors.New("boom")
 				}
-				atomic.AddInt32(&processed, int32(v))
+				atomic.AddInt32(&processed, safeIntToInt32(t, v))
 				return nil
 			}
 			onCancel := func() {
@@ -109,4 +101,11 @@ func TestProcess(t *testing.T) {
 			}
 		})
 	}
+}
+
+func safeIntToInt32(t *testing.T, v int) int32 {
+	if v < 0 || v > math.MaxInt32 {
+		t.Fatalf("value %d outside int32 range", v)
+	}
+	return int32(v)
 }

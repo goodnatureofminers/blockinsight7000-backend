@@ -1,3 +1,4 @@
+// Package main contains placeholder entrypoint for the UTXO ingester.
 package main
 
 var config struct {
@@ -7,5 +8,6 @@ var config struct {
 }
 
 func main() {
+	_ = config
 	// todo
 }
