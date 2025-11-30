@@ -1,4 +1,4 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
@@ -8,17 +8,6 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/clock"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"go.uber.org/zap"
-)
-
-const (
-	defaultWorkerCount        = 50
-	randomMissingHeightsLimit = 10000
-
-	transactionFlushThreshold = 1000
-	outputFlushThreshold      = 1000
-
-	sleepDuration     = 5 * time.Second
-	longSleepDuration = 1 * time.Minute
 )
 
 type HistoryIngesterService struct {
@@ -50,7 +39,7 @@ func NewHistoryIngesterService(
 		return nil, errors.New("history ingester metrics is required")
 	}
 
-	bw := newBlockWriter(repo, logger)
+	bw := newHistoryBlockWriter(repo, logger)
 
 	return &HistoryIngesterService{
 		logger:            logger,
@@ -60,15 +49,15 @@ func NewHistoryIngesterService(
 		sleep:             clock.SleepWithContext,
 		sleepDuration:     sleepDuration,
 		longSleepDuration: longSleepDuration,
-		heightFetcher: &heightFetcher{
+		heightFetcher: &historyHeightFetcher{
 			source:     source,
 			repository: repo,
 			coin:       coin,
 			network:    network,
-			limit:      randomMissingHeightsLimit,
+			limit:      randomHeightLimit,
 		},
 		blockWriter: bw,
-		blockProcessor: &blockProcessor{
+		blockProcessor: &historyBlockProcessor{
 			workerCount: defaultWorkerCount,
 			source:      source,
 			blockWriter: bw,
@@ -80,7 +69,7 @@ func NewHistoryIngesterService(
 
 func (s *HistoryIngesterService) Run(ctx context.Context) error {
 	bwCtx, bwCancel := context.WithCancel(ctx)
-	s.blockProcessor.SetCancelBatcher(bwCancel)
+	s.blockProcessor.SetCancel(bwCancel)
 
 	s.blockWriter.Start(bwCtx)
 	defer func() {
@@ -93,14 +82,17 @@ func (s *HistoryIngesterService) Run(ctx context.Context) error {
 			return ctx.Err()
 		}
 		if err := s.run(ctx); err != nil {
-			return err
+			s.logger.Warn("run iteration failed, backing off", zap.Error(err), zap.Duration("sleep", sleepDuration))
+			if sleepErr := s.sleep(ctx, s.sleepDuration); sleepErr != nil {
+				return sleepErr
+			}
 		}
 	}
 }
 
 func (s *HistoryIngesterService) run(ctx context.Context) (err error) {
 	started := time.Now()
-	heights, err := s.heightFetcher.FetchMissing(ctx)
+	heights, err := s.heightFetcher.Fetch(ctx)
 	s.metrics.ObserveFetchMissing(err, started)
 	if err != nil {
 		s.logger.Error("fetch missing heights failed", zap.Error(err))

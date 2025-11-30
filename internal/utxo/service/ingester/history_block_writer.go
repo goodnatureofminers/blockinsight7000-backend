@@ -1,28 +1,21 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
-	"time"
 
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/batcher"
 	"go.uber.org/zap"
 )
 
-const (
-	blockBatcherCapacity      = 500
-	blockBatcherFlushInterval = 30 * time.Second
-	blockBatcherWorkerCount   = 1
-)
-
-type blockWriter struct {
+type historyBlockWriter struct {
 	repo         ClickhouseRepository
 	logger       *zap.Logger
 	blockBatcher *batcher.Batcher[model.InsertBlock]
 }
 
-func newBlockWriter(repo ClickhouseRepository, logger *zap.Logger) *blockWriter {
-	w := &blockWriter{
+func newHistoryBlockWriter(repo ClickhouseRepository, logger *zap.Logger) *historyBlockWriter {
+	w := &historyBlockWriter{
 		repo:   repo,
 		logger: logger,
 	}
@@ -36,15 +29,15 @@ func newBlockWriter(repo ClickhouseRepository, logger *zap.Logger) *blockWriter 
 	return w
 }
 
-func (w *blockWriter) Start(ctx context.Context) {
+func (w *historyBlockWriter) Start(ctx context.Context) {
 	w.blockBatcher.Start(ctx)
 }
 
-func (w *blockWriter) Stop() {
+func (w *historyBlockWriter) Stop() {
 	w.blockBatcher.Stop()
 }
 
-func (w *blockWriter) WriteBlock(ctx context.Context, b model.InsertBlock) error {
+func (w *historyBlockWriter) WriteBlock(ctx context.Context, b model.InsertBlock) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -52,7 +45,7 @@ func (w *blockWriter) WriteBlock(ctx context.Context, b model.InsertBlock) error
 	return w.blockBatcher.Add(ctx, b)
 }
 
-func (w *blockWriter) flush(ctx context.Context, insertBlocks []model.InsertBlock) error {
+func (w *historyBlockWriter) flush(ctx context.Context, insertBlocks []model.InsertBlock) error {
 	blocks := make([]model.Block, 0, len(insertBlocks))
 	txs := make([]model.Transaction, 0, len(insertBlocks))
 	outputs := make([]model.TransactionOutput, 0, len(insertBlocks))

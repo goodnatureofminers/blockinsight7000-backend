@@ -1,4 +1,4 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
@@ -13,19 +13,17 @@ import (
 	"go.uber.org/zap"
 )
 
-func Test_blockProcessor_processHeight(t *testing.T) {
-	//t.Parallel()
-
+func Test_historyBlockProcessor_processHeight(t *testing.T) {
 	type testCase struct {
 		name          string
-		setupMocks    func(ctx context.Context, ctrl *gomock.Controller) (*blockProcessor, uint64)
+		setupMocks    func(ctx context.Context, ctrl *gomock.Controller) (*historyBlockProcessor, uint64)
 		wantErrSubstr string
 	}
 
 	tests := []testCase{
 		{
 			name: "success writes block and records metrics",
-			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*blockProcessor, uint64) {
+			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*historyBlockProcessor, uint64) {
 				height := uint64(42)
 				source := NewMockHistorySource(ctrl)
 				writer := NewMockBlockWriter(ctrl)
@@ -50,7 +48,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 				metrics.EXPECT().
 					ObserveProcessHeight(nil, height, gomock.Any())
 
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					source:      source,
 					blockWriter: writer,
 					metrics:     metrics,
@@ -60,7 +58,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 		},
 		{
 			name: "fetch block error bubbles with height and metrics",
-			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*blockProcessor, uint64) {
+			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*historyBlockProcessor, uint64) {
 				height := uint64(7)
 				source := NewMockHistorySource(ctrl)
 				metrics := NewMockHistoryIngesterMetrics(ctrl)
@@ -71,7 +69,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 				metrics.EXPECT().
 					ObserveProcessHeight(gomock.Any(), height, gomock.Any())
 
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					source:  source,
 					metrics: metrics,
 					logger:  zap.NewNop(),
@@ -81,7 +79,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 		},
 		{
 			name: "write block error bubbles with height and metrics",
-			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*blockProcessor, uint64) {
+			setupMocks: func(ctx context.Context, ctrl *gomock.Controller) (*historyBlockProcessor, uint64) {
 				height := uint64(9)
 				source := NewMockHistorySource(ctrl)
 				writer := NewMockBlockWriter(ctrl)
@@ -102,7 +100,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 				metrics.EXPECT().
 					ObserveProcessHeight(gomock.Any(), height, gomock.Any())
 
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					source:      source,
 					blockWriter: writer,
 					metrics:     metrics,
@@ -136,7 +134,7 @@ func Test_blockProcessor_processHeight(t *testing.T) {
 	}
 }
 
-func Test_blockProcessor_Process(t *testing.T) {
+func Test_historyBlockProcessor_Process(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
@@ -145,13 +143,13 @@ func Test_blockProcessor_Process(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		prepare       func(ctrl *gomock.Controller) (*blockProcessor, args, *int)
+		prepare       func(ctrl *gomock.Controller) (*historyBlockProcessor, args, *int)
 		wantErrSubstr string
 		wantCancel    bool
 	}{
 		{
 			name: "processes all heights successfully",
-			prepare: func(ctrl *gomock.Controller) (*blockProcessor, args, *int) {
+			prepare: func(ctrl *gomock.Controller) (*historyBlockProcessor, args, *int) {
 				source := NewMockHistorySource(ctrl)
 				writer := NewMockBlockWriter(ctrl)
 				heights := []uint64{1, 2, 3}
@@ -170,7 +168,7 @@ func Test_blockProcessor_Process(t *testing.T) {
 						Return(nil)
 				}
 
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					workerCount: 2,
 					source:      source,
 					blockWriter: writer,
@@ -180,7 +178,7 @@ func Test_blockProcessor_Process(t *testing.T) {
 		},
 		{
 			name: "write error cancels batcher and returns error",
-			prepare: func(ctrl *gomock.Controller) (*blockProcessor, args, *int) {
+			prepare: func(ctrl *gomock.Controller) (*historyBlockProcessor, args, *int) {
 				source := NewMockHistorySource(ctrl)
 				writer := NewMockBlockWriter(ctrl)
 				heights := []uint64{5, 6}
@@ -203,12 +201,12 @@ func Test_blockProcessor_Process(t *testing.T) {
 					Return(nil)
 
 				cancelCalled := 0
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					workerCount: 2,
 					source:      source,
 					blockWriter: writer,
 					logger:      zap.NewNop(),
-					cancelBatcher: func() {
+					cancel: func() {
 						cancelCalled++
 					},
 				}, args{ctx: ctx, heights: heights}, &cancelCalled
@@ -218,7 +216,7 @@ func Test_blockProcessor_Process(t *testing.T) {
 		},
 		{
 			name: "fetch error cancels batcher and returns error",
-			prepare: func(ctrl *gomock.Controller) (*blockProcessor, args, *int) {
+			prepare: func(ctrl *gomock.Controller) (*historyBlockProcessor, args, *int) {
 				source := NewMockHistorySource(ctrl)
 				writer := NewMockBlockWriter(ctrl)
 				ctx := context.Background()
@@ -229,12 +227,12 @@ func Test_blockProcessor_Process(t *testing.T) {
 					Return(nil, errors.New("fetch failed"))
 
 				cancelCalled := 0
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					workerCount: 1,
 					source:      source,
 					blockWriter: writer,
 					logger:      zap.NewNop(),
-					cancelBatcher: func() {
+					cancel: func() {
 						cancelCalled++
 					},
 				}, args{ctx: ctx, heights: heights}, &cancelCalled
@@ -244,7 +242,7 @@ func Test_blockProcessor_Process(t *testing.T) {
 		},
 		{
 			name: "context canceled returns ctx error",
-			prepare: func(ctrl *gomock.Controller) (*blockProcessor, args, *int) {
+			prepare: func(ctrl *gomock.Controller) (*historyBlockProcessor, args, *int) {
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel()
 
@@ -253,7 +251,7 @@ func Test_blockProcessor_Process(t *testing.T) {
 				source.EXPECT().FetchBlock(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, context.Canceled)
 				writer.EXPECT().WriteBlock(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 
-				return &blockProcessor{
+				return &historyBlockProcessor{
 					workerCount: 1,
 					source:      source,
 					blockWriter: writer,

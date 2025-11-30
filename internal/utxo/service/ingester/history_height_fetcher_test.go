@@ -1,4 +1,4 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-func Test_heightFetcher_FetchMissing(t *testing.T) {
+func Test_historyHeightFetcher_Fetch(t *testing.T) {
 	type fields struct {
 		source     HistorySource
 		repository ClickhouseRepository
@@ -54,14 +54,14 @@ func Test_heightFetcher_FetchMissing(t *testing.T) {
 			defer ctrl.Finish()
 			fields, args := tt.prepare(ctrl)
 
-			f := &heightFetcher{
+			f := &historyHeightFetcher{
 				source:     fields.source,
 				repository: fields.repository,
 				coin:       fields.coin,
 				network:    fields.network,
 				limit:      fields.limit,
 			}
-			got, err := f.FetchMissing(args.ctx)
+			got, err := f.Fetch(args.ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FetchMissing() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -73,7 +73,7 @@ func Test_heightFetcher_FetchMissing(t *testing.T) {
 	}
 }
 
-func Test_heightFetcher_FetchMissing_errors(t *testing.T) {
+func Test_historyHeightFetcher_Fetch_errors(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -82,7 +82,7 @@ func Test_heightFetcher_FetchMissing_errors(t *testing.T) {
 	source := NewMockHistorySource(ctrl)
 	repo := NewMockClickhouseRepository(ctrl)
 
-	f := &heightFetcher{
+	f := &historyHeightFetcher{
 		source:     source,
 		repository: repo,
 		coin:       model.Coin("btc"),
@@ -91,14 +91,14 @@ func Test_heightFetcher_FetchMissing_errors(t *testing.T) {
 	}
 
 	source.EXPECT().LatestHeight(ctx).Return(uint64(0), errors.New("latest failed"))
-	if _, err := f.FetchMissing(ctx); err == nil {
+	if _, err := f.Fetch(ctx); err == nil {
 		t.Fatalf("expected error from LatestHeight")
 	}
 
 	source.EXPECT().LatestHeight(ctx).Return(uint64(50), nil)
 	repo.EXPECT().RandomMissingBlockHeights(ctx, model.Coin("btc"), model.Network("mainnet"), uint64(50), uint64(5)).
 		Return(nil, errors.New("missing failed"))
-	if _, err := f.FetchMissing(ctx); err == nil {
+	if _, err := f.Fetch(ctx); err == nil {
 		t.Fatalf("expected error from RandomMissingBlockHeights")
 	}
 }

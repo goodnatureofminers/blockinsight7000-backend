@@ -1,4 +1,4 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-type heightFetcher struct {
+type historyHeightFetcher struct {
 	source     HistorySource
 	repository ClickhouseRepository
 	coin       model.Coin
@@ -14,7 +14,7 @@ type heightFetcher struct {
 	limit      uint64
 }
 
-func (f *heightFetcher) FetchMissing(ctx context.Context) ([]uint64, error) {
+func (f *historyHeightFetcher) Fetch(ctx context.Context) ([]uint64, error) {
 	latest, err := f.source.LatestHeight(ctx)
 	if err != nil {
 		return nil, err

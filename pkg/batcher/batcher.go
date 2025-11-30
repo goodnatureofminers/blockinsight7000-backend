@@ -45,10 +45,14 @@ func (b *Batcher[T]) Stop() {
 
 func (b *Batcher[T]) Add(ctx context.Context, item T) error {
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
 	case <-b.stop:
 		return context.Canceled
+	default:
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case b.itemsCh <- item:
 		return nil
 	}

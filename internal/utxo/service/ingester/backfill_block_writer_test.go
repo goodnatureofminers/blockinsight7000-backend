@@ -1,9 +1,8 @@
-package history_ingestor
+package ingester
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func Test_blockWriter_flush(t *testing.T) {
+func Test_backfillBlockWriter_flush(t *testing.T) {
 	type fields struct {
 		repo         ClickhouseRepository
 		logger       *zap.Logger
@@ -28,43 +27,31 @@ func Test_blockWriter_flush(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "success flushes blocks/txs/outputs",
+			name: "success flushes blocks/inputs",
 			prepare: func(ctrl *gomock.Controller) (fields, args) {
 				repo := NewMockClickhouseRepository(ctrl)
 				logger := zap.NewNop()
-				w := newBlockWriter(repo, logger)
+				w := newBackfillBlockWriter(repo, logger)
 
 				insertBlocks := []model.InsertBlock{
 					{
 						Block: model.Block{Height: 1},
-						Txs:   []model.Transaction{{TxID: "tx1"}},
-						Outputs: []model.TransactionOutput{
+						Inputs: []model.TransactionInput{
 							{TxID: "tx1", Index: 0},
 						},
 					},
 					{
 						Block: model.Block{Height: 2},
-						Txs: []model.Transaction{
-							{TxID: "tx2a"},
-							{TxID: "tx2b"},
-						},
-						Outputs: []model.TransactionOutput{
-							{TxID: "tx2a", Index: 0},
-							{TxID: "tx2b", Index: 0},
+						Inputs: []model.TransactionInput{
+							{TxID: "tx2", Index: 0},
 						},
 					},
 				}
 
 				ctx := context.Background()
-				repo.EXPECT().InsertTransactions(ctx, []model.Transaction{
-					{TxID: "tx1"},
-					{TxID: "tx2a"},
-					{TxID: "tx2b"},
-				}).Return(nil)
-				repo.EXPECT().InsertTransactionOutputs(ctx, []model.TransactionOutput{
+				repo.EXPECT().InsertTransactionInputs(ctx, []model.TransactionInput{
 					{TxID: "tx1", Index: 0},
-					{TxID: "tx2a", Index: 0},
-					{TxID: "tx2b", Index: 0},
+					{TxID: "tx2", Index: 0},
 				}).Return(nil)
 				repo.EXPECT().InsertBlocks(ctx, []model.Block{
 					{Height: 1},
@@ -76,41 +63,32 @@ func Test_blockWriter_flush(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "flushes in multiple batches when thresholds exceeded",
+			name: "flushes inputs in batches when threshold exceeded",
 			prepare: func(ctrl *gomock.Controller) (fields, args) {
 				repo := NewMockClickhouseRepository(ctrl)
 				logger := zap.NewNop()
-				w := newBlockWriter(repo, logger)
+				w := newBackfillBlockWriter(repo, logger)
 
-				// block1 has exactly threshold txs/outputs, block2 has a tail of 1.
-				block1Txs := make([]model.Transaction, transactionFlushThreshold)
-				block1Outputs := make([]model.TransactionOutput, outputFlushThreshold)
-				for i := 0; i < transactionFlushThreshold; i++ {
-					block1Txs[i] = model.Transaction{TxID: fmt.Sprintf("tx-%d", i)}
-					block1Outputs[i] = model.TransactionOutput{TxID: fmt.Sprintf("tx-%d", i), Index: 0}
+				inputs1 := make([]model.TransactionInput, inputFlushThreshold)
+				for i := 0; i < inputFlushThreshold; i++ {
+					inputs1[i] = model.TransactionInput{TxID: "tx", Index: uint32(i)}
 				}
-				block2Txs := []model.Transaction{{TxID: "tx-tail"}}
-				block2Outputs := []model.TransactionOutput{{TxID: "tx-tail", Index: 0}}
 
 				insertBlocks := []model.InsertBlock{
 					{
-						Block:   model.Block{Height: 1},
-						Txs:     block1Txs,
-						Outputs: block1Outputs,
+						Block:  model.Block{Height: 1},
+						Inputs: inputs1,
 					},
 					{
-						Block:   model.Block{Height: 2},
-						Txs:     block2Txs,
-						Outputs: block2Outputs,
+						Block:  model.Block{Height: 2},
+						Inputs: []model.TransactionInput{{TxID: "tail", Index: 0}},
 					},
 				}
 
 				ctx := context.Background()
 				gomock.InOrder(
-					repo.EXPECT().InsertTransactions(ctx, block1Txs).Return(nil),
-					repo.EXPECT().InsertTransactionOutputs(ctx, block1Outputs).Return(nil),
-					repo.EXPECT().InsertTransactions(ctx, block2Txs).Return(nil),
-					repo.EXPECT().InsertTransactionOutputs(ctx, block2Outputs).Return(nil),
+					repo.EXPECT().InsertTransactionInputs(ctx, inputs1).Return(nil),
+					repo.EXPECT().InsertTransactionInputs(ctx, []model.TransactionInput{{TxID: "tail", Index: 0}}).Return(nil),
 					repo.EXPECT().InsertBlocks(ctx, []model.Block{{Height: 1}, {Height: 2}}).Return(nil),
 				)
 
@@ -119,23 +97,22 @@ func Test_blockWriter_flush(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "returns error on first failed insert and stops",
+			name: "returns error on failed insert",
 			prepare: func(ctrl *gomock.Controller) (fields, args) {
 				repo := NewMockClickhouseRepository(ctrl)
 				logger := zap.NewNop()
-				w := newBlockWriter(repo, logger)
+				w := newBackfillBlockWriter(repo, logger)
 
-				block1Txs := []model.Transaction{{TxID: "tx1"}}
-				block1Outputs := []model.TransactionOutput{{TxID: "tx1", Index: 0}}
 				insertBlocks := []model.InsertBlock{
 					{
-						Block:   model.Block{Height: 1},
-						Txs:     block1Txs,
-						Outputs: block1Outputs,
+						Block: model.Block{Height: 1},
+						Inputs: []model.TransactionInput{
+							{TxID: "tx1", Index: 0},
+						},
 					},
 				}
 				ctx := context.Background()
-				repo.EXPECT().InsertTransactions(ctx, block1Txs).Return(errors.New("insert txs failed"))
+				repo.EXPECT().InsertTransactionInputs(ctx, gomock.Any()).Return(errors.New("insert inputs failed"))
 
 				return fields{repo: repo, logger: logger, blockBatcher: w.blockBatcher}, args{ctx: ctx, insertBlocks: insertBlocks}
 			},
@@ -149,7 +126,7 @@ func Test_blockWriter_flush(t *testing.T) {
 			defer ctrl.Finish()
 
 			fields, args := tt.prepare(ctrl)
-			w := &blockWriter{
+			w := &backfillBlockWriter{
 				repo:         fields.repo,
 				logger:       fields.logger,
 				blockBatcher: fields.blockBatcher,
@@ -161,32 +138,32 @@ func Test_blockWriter_flush(t *testing.T) {
 	}
 }
 
-func Test_blockWriter_WriteBlock(t *testing.T) {
+func Test_backfillBlockWriter_WriteBlock(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		b   model.InsertBlock
 	}
 	tests := []struct {
 		name    string
-		prepare func(ctrl *gomock.Controller) (*blockWriter, args)
+		prepare func(ctrl *gomock.Controller) (*backfillBlockWriter, args)
 		wantErr bool
 	}{
 		{
 			name: "returns ctx error when canceled",
-			prepare: func(ctrl *gomock.Controller) (*blockWriter, args) {
+			prepare: func(ctrl *gomock.Controller) (*backfillBlockWriter, args) {
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel()
 				repo := NewMockClickhouseRepository(ctrl)
-				w := newBlockWriter(repo, zap.NewNop())
+				w := newBackfillBlockWriter(repo, zap.NewNop())
 				return w, args{ctx: ctx, b: model.InsertBlock{}}
 			},
 			wantErr: true,
 		},
 		{
 			name: "adds block to batcher on success",
-			prepare: func(ctrl *gomock.Controller) (*blockWriter, args) {
+			prepare: func(ctrl *gomock.Controller) (*backfillBlockWriter, args) {
 				repo := NewMockClickhouseRepository(ctrl)
-				w := newBlockWriter(repo, zap.NewNop())
+				w := newBackfillBlockWriter(repo, zap.NewNop())
 				return w, args{ctx: context.Background(), b: model.InsertBlock{Block: model.Block{Height: 1}}}
 			},
 			wantErr: false,
