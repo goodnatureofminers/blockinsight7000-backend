@@ -1,3 +1,4 @@
+// Package chain defines interfaces and structs shared between UTXO ingestion components.
 package chain
 
 import (
@@ -18,12 +19,14 @@ type BackfillSource interface {
 	FetchBlock(ctx context.Context, height uint64) (*BackfillBlock, error)
 }
 
+// HistoryBlock wraps a block and its transactions/outputs fetched from a history source.
 type HistoryBlock struct {
 	Block   model.Block
 	Txs     []model.Transaction
 	Outputs []model.TransactionOutput
 }
 
+// BackfillBlock wraps a block and its resolved inputs fetched from a backfill source.
 type BackfillBlock struct {
 	Block  model.Block
 	Inputs []model.TransactionInput

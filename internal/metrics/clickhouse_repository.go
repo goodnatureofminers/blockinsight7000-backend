@@ -24,13 +24,15 @@ var (
 	}, []string{"operation", "coin", "network", "status"})
 )
 
-type ClickhouseRepository struct {
-}
+// ClickhouseRepository tracks metrics for ClickHouse repository operations.
+type ClickhouseRepository struct{}
 
+// NewClickhouseRepository creates a ClickhouseRepository metrics collector.
 func NewClickhouseRepository() *ClickhouseRepository {
 	return &ClickhouseRepository{}
 }
 
+// Observe records duration and status of a repository operation.
 func (m ClickhouseRepository) Observe(operation string, coin model.Coin, network model.Network, err error, started time.Time) {
 	status := "success"
 	if err != nil {

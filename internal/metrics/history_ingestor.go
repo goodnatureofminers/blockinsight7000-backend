@@ -56,11 +56,13 @@ var (
 	}, []string{"coin", "network", "status"})
 )
 
+// HistoryIngester tracks metrics for the history ingester pipeline.
 type HistoryIngester struct {
 	coin    model.Coin
 	network model.Network
 }
 
+// NewHistoryIngester constructs a HistoryIngester with defaults.
 func NewHistoryIngester(coin model.Coin, network model.Network) *HistoryIngester {
 	if coin == "" {
 		coin = "unknown"
@@ -71,6 +73,7 @@ func NewHistoryIngester(coin model.Coin, network model.Network) *HistoryIngester
 	return &HistoryIngester{coin: coin, network: network}
 }
 
+// ObserveFetchMissing records a fetch-missing attempt outcome and duration.
 func (m HistoryIngester) ObserveFetchMissing(err error, started time.Time) {
 	status := "success"
 	if err != nil {
@@ -81,6 +84,7 @@ func (m HistoryIngester) ObserveFetchMissing(err error, started time.Time) {
 		Observe(time.Since(started).Seconds())
 }
 
+// ObserveProcessBatch records processing of a batch of heights.
 func (m HistoryIngester) ObserveProcessBatch(err error, heights int, started time.Time) {
 	status := "success"
 	if err != nil {
@@ -92,7 +96,8 @@ func (m HistoryIngester) ObserveProcessBatch(err error, heights int, started tim
 	historyProcessBatchSize.WithLabelValues(string(m.coin), string(m.network)).Observe(float64(heights))
 }
 
-func (m HistoryIngester) ObserveProcessHeight(err error, height uint64, started time.Time) {
+// ObserveProcessHeight records processing of a single height.
+func (m HistoryIngester) ObserveProcessHeight(err error, _ uint64, started time.Time) {
 	status := "success"
 	if err != nil {
 		status = "error"

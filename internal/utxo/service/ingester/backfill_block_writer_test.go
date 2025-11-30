@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/batcher"
+	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/safe"
 	"go.uber.org/zap"
 )
 
@@ -70,8 +71,12 @@ func Test_backfillBlockWriter_flush(t *testing.T) {
 				w := newBackfillBlockWriter(repo, logger)
 
 				inputs1 := make([]model.TransactionInput, inputFlushThreshold)
-				for i := 0; i < inputFlushThreshold; i++ {
-					inputs1[i] = model.TransactionInput{TxID: "tx", Index: uint32(i)}
+				for i := range inputs1 {
+					if i >= len(inputs1) {
+						t.Fatalf("index %d out of range", i)
+					}
+					idx := mustUint32(t, i)
+					inputs1[i] = model.TransactionInput{TxID: "tx", Index: idx}
 				}
 
 				insertBlocks := []model.InsertBlock{
@@ -136,6 +141,15 @@ func Test_backfillBlockWriter_flush(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustUint32(t *testing.T, v int) uint32 {
+	t.Helper()
+	value, err := safe.Uint32(v)
+	if err != nil {
+		t.Fatalf("value %d exceeds uint32: %v", v, err)
+	}
+	return value
 }
 
 func Test_backfillBlockWriter_WriteBlock(t *testing.T) {

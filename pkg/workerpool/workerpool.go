@@ -1,3 +1,4 @@
+// Package workerpool provides simple concurrent processing utilities.
 package workerpool
 
 import (

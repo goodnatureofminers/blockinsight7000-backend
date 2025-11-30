@@ -8,6 +8,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
+// MaxContiguousBlockHeight returns the maximum contiguous height for a coin/network.
 func (r *Repository) MaxContiguousBlockHeight(ctx context.Context, coin model.Coin, network model.Network) (uint64, error) {
 	start := time.Now()
 	var err error
@@ -31,16 +32,20 @@ WHERE rn = height limit 1;`
 	if err != nil {
 		return 0, fmt.Errorf("query max contiguous block height: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close rows: %w", closeErr)
+		}
+	}()
 
 	var height uint64
-	for rows.Next() {
-		if err = rows.Scan(&height); err != nil {
-			return 0, fmt.Errorf("scan max contiguous block height: %w", err)
-		}
-
-		return height, nil
+	if !rows.Next() {
+		return 0, fmt.Errorf("not found max contiguous block height")
 	}
 
-	return 0, fmt.Errorf("not found max contiguous block height")
+	if err = rows.Scan(&height); err != nil {
+		return 0, fmt.Errorf("scan max contiguous block height: %w", err)
+	}
+
+	return height, nil
 }

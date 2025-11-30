@@ -1,3 +1,4 @@
+// Package main runs ClickHouse migrations.
 package main
 
 import (
@@ -36,7 +37,9 @@ func main() {
 	defer stop()
 
 	if err := runMigrations(ctx, cfg); err != nil {
-		log.Fatalf("migration run failed: %v", err)
+		stop()
+		log.Printf("migration run failed: %v", err)
+		return
 	}
 }
 

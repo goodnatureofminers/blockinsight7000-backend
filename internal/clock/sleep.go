@@ -1,3 +1,4 @@
+// Package clock provides helpers for time-related operations.
 package clock
 
 import (

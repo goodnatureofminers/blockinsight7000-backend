@@ -2,6 +2,7 @@ package model
 
 import "time"
 
+// Transaction represents a blockchain transaction with aggregated metadata.
 type Transaction struct {
 	Coin        Coin
 	Network     Network
@@ -16,6 +17,7 @@ type Transaction struct {
 	OutputCount uint16
 }
 
+// TransactionInput describes a reference to a previous transaction output.
 type TransactionInput struct {
 	Coin         Coin
 	Network      Network
@@ -34,6 +36,7 @@ type TransactionInput struct {
 	Addresses    []string
 }
 
+// TransactionOutput represents an output produced by a transaction.
 type TransactionOutput struct {
 	Coin        Coin
 	Network     Network

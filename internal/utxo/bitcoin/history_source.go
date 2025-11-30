@@ -9,17 +9,19 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
+	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/safe"
 )
 
 // HistorySource implements chain.HistorySource for Bitcoin.
 type HistorySource struct {
-	rpc     *RpcClient
+	rpc     *RPCClient
 	decoder *scriptDecoder
 	coin    model.Coin
 	network model.Network
 }
 
-func NewHistorySource(rpc *RpcClient, coin model.Coin, network model.Network) (*HistorySource, error) {
+// NewHistorySource creates a HistorySource for Bitcoin.
+func NewHistorySource(rpc *RPCClient, coin model.Coin, network model.Network) (*HistorySource, error) {
 	decoder, err := newScriptDecoder(network)
 	if err != nil {
 		return nil, err
@@ -27,12 +29,27 @@ func NewHistorySource(rpc *RpcClient, coin model.Coin, network model.Network) (*
 	return &HistorySource{rpc: rpc, decoder: decoder, coin: coin, network: network}, nil
 }
 
+// LatestHeight returns the latest block height from the node.
 func (s *HistorySource) LatestHeight(_ context.Context) (uint64, error) {
 	count, err := s.rpc.GetBlockCount()
-	return uint64(count), err
+	if err != nil {
+		return 0, err
+	}
+	height, err := safe.Uint64(count)
+	if err != nil {
+		return 0, fmt.Errorf("block count overflow: %w", err)
+	}
+	return height, nil
 }
 
+// FetchBlock retrieves a block with transactions/outputs at the given height.
 func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.HistoryBlock, error) {
+	if height > math.MaxInt64 {
+		return nil, fmt.Errorf("block height %d exceeds rpc limit", height)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	hash, err := s.rpc.GetBlockHash(int64(height))
 	if err != nil {
 		return nil, fmt.Errorf("get block hash at height %d: %w", height, err)
@@ -51,17 +68,26 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 	outputs := make([]model.TransactionOutput, 0)
 
 	for _, tx := range src.Tx {
-		if len(tx.Vin) > math.MaxUint16 {
-			return nil, fmt.Errorf("tx %s vin count overflow: %d", tx.Txid, len(tx.Vin))
+		inputCount := len(tx.Vin)
+		if inputCount > math.MaxUint16 {
+			return nil, fmt.Errorf("tx %s vin count overflow: %d", tx.Txid, inputCount)
 		}
-		if len(tx.Vout) > math.MaxUint16 {
-			return nil, fmt.Errorf("tx %s vout count overflow: %d", tx.Txid, len(tx.Vout))
+		outputCount := len(tx.Vout)
+		if outputCount > math.MaxUint16 {
+			return nil, fmt.Errorf("tx %s vout count overflow: %d", tx.Txid, outputCount)
 		}
-		if tx.Size < 0 {
-			return nil, fmt.Errorf("tx %s negative size: %d", tx.Txid, tx.Size)
+
+		size, err := safe.Uint32(tx.Size)
+		if err != nil {
+			return nil, fmt.Errorf("tx %s size overflow: %w", tx.Txid, err)
 		}
-		if tx.Vsize < 0 {
-			return nil, fmt.Errorf("tx %s negative vsize: %d", tx.Txid, tx.Vsize)
+		vsize, err := safe.Uint32(tx.Vsize)
+		if err != nil {
+			return nil, fmt.Errorf("tx %s vsize overflow: %w", tx.Txid, err)
+		}
+		version, err := safe.Uint32(tx.Version)
+		if err != nil {
+			return nil, fmt.Errorf("tx %s version overflow: %w", tx.Txid, err)
 		}
 
 		txs = append(txs, model.Transaction{
@@ -70,12 +96,12 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 			TxID:        tx.Txid,
 			BlockHeight: block.Height,
 			Timestamp:   block.Timestamp,
-			Size:        uint32(tx.Size),
-			VSize:       uint32(tx.Vsize),
-			Version:     tx.Version,
+			Size:        size,
+			VSize:       vsize,
+			Version:     version,
 			LockTime:    tx.LockTime,
-			InputCount:  uint16(len(tx.Vin)),
-			OutputCount: uint16(len(tx.Vout)),
+			InputCount:  uint16(inputCount),
+			OutputCount: uint16(outputCount),
 		})
 
 		txOutputs, err := s.convertOutputs(tx, block.Height, block.Timestamp)
@@ -97,27 +123,36 @@ func (s *HistorySource) convertBlockHeader(src btcjson.GetBlockVerboseTxResult) 
 	if err != nil {
 		return model.Block{}, fmt.Errorf("block %d bits parse: %w", src.Height, err)
 	}
-	if src.Height > math.MaxUint32 {
-		return model.Block{}, fmt.Errorf("block height %d exceeds uint32", src.Height)
-	}
-	if src.Size < 0 {
-		return model.Block{}, fmt.Errorf("block %d negative size: %d", src.Height, src.Size)
-	}
-
 	timestamp := time.Unix(src.Time, 0).UTC()
+	height, err := safe.Uint32(src.Height)
+	if err != nil {
+		return model.Block{}, fmt.Errorf("block height %d overflow: %w", src.Height, err)
+	}
+	size, err := safe.Uint32(src.Size)
+	if err != nil {
+		return model.Block{}, fmt.Errorf("block %d size overflow: %w", src.Height, err)
+	}
+	version, err := safe.Uint32(src.Version)
+	if err != nil {
+		return model.Block{}, fmt.Errorf("block %d version overflow: %w", src.Height, err)
+	}
+	txCount, err := safe.Uint32(len(src.Tx))
+	if err != nil {
+		return model.Block{}, fmt.Errorf("block %d tx count overflow: %w", src.Height, err)
+	}
 	return model.Block{
 		Coin:       s.coin,
 		Network:    s.network,
-		Height:     uint64(src.Height),
+		Height:     uint64(height),
 		Hash:       src.Hash,
 		Timestamp:  timestamp,
-		Version:    uint32(src.Version),
+		Version:    version,
 		MerkleRoot: src.MerkleRoot,
 		Bits:       bits,
 		Nonce:      src.Nonce,
 		Difficulty: src.Difficulty,
-		Size:       uint32(src.Size),
-		TXCount:    uint32(len(src.Tx)),
+		Size:       size,
+		TXCount:    txCount,
 		Status:     model.BlockUnprocessed,
 	}, nil
 }
@@ -128,10 +163,14 @@ func (s *HistorySource) convertOutputs(tx btcjson.TxRawResult, blockHeight uint6
 		if vout.Value < 0 {
 			return nil, fmt.Errorf("tx %s output %d negative value: %f", tx.Txid, idx, vout.Value)
 		}
+		index, err := safe.Uint32(idx)
+		if err != nil {
+			return nil, fmt.Errorf("tx %s output index overflow: %w", tx.Txid, err)
+		}
 
 		value, err := BtcToSatoshis(vout.Value)
 		if err != nil {
-			return nil, fmt.Errorf("tx %s output %d convert value: %w", tx.Txid, idx, err)
+			return nil, fmt.Errorf("tx %s output %d safe value: %w", tx.Txid, idx, err)
 		}
 
 		addresses, err := s.decoder.decodeAddresses(vout)
@@ -145,7 +184,7 @@ func (s *HistorySource) convertOutputs(tx btcjson.TxRawResult, blockHeight uint6
 			BlockHeight: blockHeight,
 			BlockTime:   blockTime,
 			TxID:        tx.Txid,
-			Index:       uint32(idx),
+			Index:       index,
 			Value:       value,
 			ScriptType:  vout.ScriptPubKey.Type,
 			ScriptHex:   vout.ScriptPubKey.Hex,

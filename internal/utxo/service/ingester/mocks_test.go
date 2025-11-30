@@ -89,7 +89,7 @@ func (mr *MockBlockProcessorMockRecorder) Process(ctx, heights interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Process", reflect.TypeOf((*MockBlockProcessor)(nil).Process), ctx, heights)
 }
 
-// SetCancelBatcher mocks base method.
+// SetCancel mocks base method.
 func (m *MockBlockProcessor) SetCancel(cancel func()) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetCancel", cancel)

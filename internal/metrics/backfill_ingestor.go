@@ -1,3 +1,4 @@
+// Package metrics exposes application metrics collectors.
 package metrics
 
 import (
@@ -56,11 +57,13 @@ var (
 	}, []string{"coin", "network", "status"})
 )
 
+// BackfillIngester tracks metrics for the backfill ingester pipeline.
 type BackfillIngester struct {
 	coin    model.Coin
 	network model.Network
 }
 
+// NewBackfillIngester constructs a BackfillIngester with sane defaults.
 func NewBackfillIngester(coin model.Coin, network model.Network) *BackfillIngester {
 	if coin == "" {
 		coin = "unknown"
@@ -71,6 +74,7 @@ func NewBackfillIngester(coin model.Coin, network model.Network) *BackfillIngest
 	return &BackfillIngester{coin: coin, network: network}
 }
 
+// ObserveFetchMissing records a fetch-missing attempt outcome and duration.
 func (m BackfillIngester) ObserveFetchMissing(err error, started time.Time) {
 	status := "success"
 	if err != nil {
@@ -81,6 +85,7 @@ func (m BackfillIngester) ObserveFetchMissing(err error, started time.Time) {
 		Observe(time.Since(started).Seconds())
 }
 
+// ObserveProcessBatch records processing of a batch of heights.
 func (m BackfillIngester) ObserveProcessBatch(err error, heights int, started time.Time) {
 	status := "success"
 	if err != nil {
@@ -92,7 +97,8 @@ func (m BackfillIngester) ObserveProcessBatch(err error, heights int, started ti
 	backfillProcessBatchSize.WithLabelValues(string(m.coin), string(m.network)).Observe(float64(heights))
 }
 
-func (m BackfillIngester) ObserveProcessHeight(err error, height uint64, started time.Time) {
+// ObserveProcessHeight records processing of a single height.
+func (m BackfillIngester) ObserveProcessHeight(err error, _ uint64, started time.Time) {
 	status := "success"
 	if err != nil {
 		status = "error"

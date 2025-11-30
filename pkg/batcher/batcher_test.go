@@ -3,6 +3,7 @@ package batcher
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,7 +25,7 @@ func TestBatcher_FlushOnSize(t *testing.T) {
 	b := New(zap.NewNop(), func(_ context.Context, items []int) error {
 		mu.Lock()
 		defer mu.Unlock()
-		flushed.Add(int32(len(items)))
+		flushed.Add(safeIntToInt32(t, len(items)))
 		// copy to avoid reuse
 		cp := make([]int, len(items))
 		copy(cp, items)
@@ -62,7 +63,7 @@ func TestBatcher_FlushOnInterval(t *testing.T) {
 	var flushed atomic.Int32
 
 	b := New(zap.NewNop(), func(_ context.Context, items []int) error {
-		flushed.Add(int32(len(items)))
+		flushed.Add(safeIntToInt32(t, len(items)))
 		return nil
 	}, 5, 50*time.Millisecond, 1000)
 
@@ -85,7 +86,7 @@ func TestBatcher_ContextCancelStops(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	b := New(zap.NewNop(), func(_ context.Context, items []int) error {
+	b := New(zap.NewNop(), func(_ context.Context, _ []int) error {
 		return nil
 	}, 2, time.Second, 1000)
 
@@ -108,7 +109,7 @@ func TestBatcher_FlushErrorLoggedButContinues(t *testing.T) {
 	defer cancel()
 
 	var calls atomic.Int32
-	b := New(zap.NewNop(), func(_ context.Context, items []int) error {
+	b := New(zap.NewNop(), func(_ context.Context, _ []int) error {
 		calls.Add(1)
 		if calls.Load() == 1 {
 			return errors.New("flush failed")
@@ -131,4 +132,11 @@ func TestBatcher_FlushErrorLoggedButContinues(t *testing.T) {
 	if calls.Load() != 2 {
 		t.Fatalf("expected two flush attempts, got %d", calls.Load())
 	}
+}
+
+func safeIntToInt32(t *testing.T, n int) int32 {
+	if n < 0 || n > math.MaxInt32 {
+		t.Fatalf("value %d outside int32 range", n)
+	}
+	return int32(n)
 }

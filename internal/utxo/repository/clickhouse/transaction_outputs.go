@@ -8,6 +8,7 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
+// TransactionOutputs returns outputs for a transaction from ClickHouse.
 func (r *Repository) TransactionOutputs(ctx context.Context, coin model.Coin, network model.Network, txid string) ([]model.TransactionOutput, error) {
 	start := time.Now()
 	var err error
@@ -33,7 +34,11 @@ ORDER BY output_index ASC`
 	if err != nil {
 		return nil, fmt.Errorf("query transaction outputs: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close rows: %w", cerr)
+		}
+	}()
 
 	var outputs []model.TransactionOutput
 	for rows.Next() {
