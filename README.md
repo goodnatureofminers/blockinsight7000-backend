@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/goodnatureofminers/blockinsight7000-backend/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/goodnatureofminers/blockinsight7000-backend/actions/workflows/test.yml)
 [![Lint](https://github.com/goodnatureofminers/blockinsight7000-backend/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/goodnatureofminers/blockinsight7000-backend/actions/workflows/lint.yml)
-![Coverage](https://raw.githubusercontent.com/goodnatureofminers/blockinsight7000-backend/main/coverage.svg?raw=2)
+![Coverage](https://raw.githubusercontent.com/goodnatureofminers/blockinsight7000-backend/main/coverage.svg?raw=3)
 
 Backend for a blockchain explorer: ingests chain data (currently Bitcoin) into ClickHouse and serves it via gRPC/REST APIs with Prometheus metrics.
 

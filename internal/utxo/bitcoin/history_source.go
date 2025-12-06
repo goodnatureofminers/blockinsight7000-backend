@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"time"
 
-	"github.com/btcsuite/btcd/btcjson"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/pkg/safe"
@@ -14,19 +12,18 @@ import (
 
 // HistorySource implements chain.HistorySource for Bitcoin.
 type HistorySource struct {
-	rpc     *RPCClient
-	decoder *scriptDecoder
-	coin    model.Coin
-	network model.Network
+	rpc             RPCClient
+	outputConverter OutputConverter
+	network         model.Network
 }
 
 // NewHistorySource creates a HistorySource for Bitcoin.
-func NewHistorySource(rpc *RPCClient, coin model.Coin, network model.Network) (*HistorySource, error) {
-	decoder, err := newScriptDecoder(network)
-	if err != nil {
-		return nil, err
-	}
-	return &HistorySource{rpc: rpc, decoder: decoder, coin: coin, network: network}, nil
+func NewHistorySource(outputConverter OutputConverter, rpc RPCClient, network model.Network) (*HistorySource, error) {
+	return &HistorySource{
+		rpc:             rpc,
+		outputConverter: outputConverter,
+		network:         network,
+	}, nil
 }
 
 // LatestHeight returns the latest block height from the node.
@@ -59,7 +56,7 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 		return nil, fmt.Errorf("get block %s: %w", hash, err)
 	}
 
-	block, err := s.convertBlockHeader(*src)
+	block, err := BuildBlockFromVerbose(*src, s.network, model.BlockUnprocessed)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +88,7 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 		}
 
 		txs = append(txs, model.Transaction{
-			Coin:        s.coin,
+			Coin:        model.BTC,
 			Network:     s.network,
 			TxID:        tx.Txid,
 			BlockHeight: block.Height,
@@ -104,7 +101,7 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 			OutputCount: uint16(outputCount),
 		})
 
-		txOutputs, err := s.convertOutputs(tx, block.Height, block.Timestamp)
+		txOutputs, err := s.outputConverter.Convert(tx, block.Height, block.Timestamp)
 		if err != nil {
 			return nil, err
 		}
@@ -116,82 +113,4 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 		Txs:     txs,
 		Outputs: outputs,
 	}, nil
-}
-
-func (s *HistorySource) convertBlockHeader(src btcjson.GetBlockVerboseTxResult) (model.Block, error) {
-	bits, err := ParseBits(src.Bits)
-	if err != nil {
-		return model.Block{}, fmt.Errorf("block %d bits parse: %w", src.Height, err)
-	}
-	timestamp := time.Unix(src.Time, 0).UTC()
-	height, err := safe.Uint32(src.Height)
-	if err != nil {
-		return model.Block{}, fmt.Errorf("block height %d overflow: %w", src.Height, err)
-	}
-	size, err := safe.Uint32(src.Size)
-	if err != nil {
-		return model.Block{}, fmt.Errorf("block %d size overflow: %w", src.Height, err)
-	}
-	version, err := safe.Uint32(src.Version)
-	if err != nil {
-		return model.Block{}, fmt.Errorf("block %d version overflow: %w", src.Height, err)
-	}
-	txCount, err := safe.Uint32(len(src.Tx))
-	if err != nil {
-		return model.Block{}, fmt.Errorf("block %d tx count overflow: %w", src.Height, err)
-	}
-	return model.Block{
-		Coin:       s.coin,
-		Network:    s.network,
-		Height:     uint64(height),
-		Hash:       src.Hash,
-		Timestamp:  timestamp,
-		Version:    version,
-		MerkleRoot: src.MerkleRoot,
-		Bits:       bits,
-		Nonce:      src.Nonce,
-		Difficulty: src.Difficulty,
-		Size:       size,
-		TXCount:    txCount,
-		Status:     model.BlockUnprocessed,
-	}, nil
-}
-
-func (s *HistorySource) convertOutputs(tx btcjson.TxRawResult, blockHeight uint64, blockTime time.Time) ([]model.TransactionOutput, error) {
-	outputs := make([]model.TransactionOutput, 0, len(tx.Vout))
-	for idx, vout := range tx.Vout {
-		if vout.Value < 0 {
-			return nil, fmt.Errorf("tx %s output %d negative value: %f", tx.Txid, idx, vout.Value)
-		}
-		index, err := safe.Uint32(idx)
-		if err != nil {
-			return nil, fmt.Errorf("tx %s output index overflow: %w", tx.Txid, err)
-		}
-
-		value, err := BtcToSatoshis(vout.Value)
-		if err != nil {
-			return nil, fmt.Errorf("tx %s output %d safe value: %w", tx.Txid, idx, err)
-		}
-
-		addresses, err := s.decoder.decodeAddresses(vout)
-		if err != nil {
-			return nil, fmt.Errorf("decode addresses for tx %s output %d: %w", tx.Txid, idx, err)
-		}
-
-		outputs = append(outputs, model.TransactionOutput{
-			Coin:        s.coin,
-			Network:     s.network,
-			BlockHeight: blockHeight,
-			BlockTime:   blockTime,
-			TxID:        tx.Txid,
-			Index:       index,
-			Value:       value,
-			ScriptType:  vout.ScriptPubKey.Type,
-			ScriptHex:   vout.ScriptPubKey.Hex,
-			ScriptAsm:   vout.ScriptPubKey.Asm,
-			Addresses:   addresses,
-		})
-	}
-
-	return outputs, nil
 }

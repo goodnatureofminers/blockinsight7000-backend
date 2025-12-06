@@ -7,27 +7,6 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-// TransactionOutputResolverFactory creates new per-block resolvers.
-type TransactionOutputResolverFactory struct {
-	repo    ClickhouseRepository
-	coin    model.Coin
-	network model.Network
-}
-
-// NewTransactionOutputResolverFactory constructs a resolver factory bound to a repository and network.
-func NewTransactionOutputResolverFactory(repo ClickhouseRepository, coin model.Coin, network model.Network) *TransactionOutputResolverFactory {
-	return &TransactionOutputResolverFactory{
-		repo:    repo,
-		coin:    coin,
-		network: network,
-	}
-}
-
-// New creates a TransactionOutputResolver with the factory settings.
-func (f *TransactionOutputResolverFactory) New() *TransactionOutputResolver {
-	return NewTransactionOutputResolver(f.repo, f.coin, f.network)
-}
-
 // TransactionOutputResolver caches outputs during block processing to reduce ClickHouse lookups.
 type TransactionOutputResolver struct {
 	repo    ClickhouseRepository
