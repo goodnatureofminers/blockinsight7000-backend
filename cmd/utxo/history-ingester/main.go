@@ -81,7 +81,12 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpcClient.WaitForShutdown()
 	}()
 	rpc := bitcoin.NewRPCClient(rpcClient, metrics.NewRPCClient(cfg.Coin, cfg.Network))
-	source, err := bitcoin.NewHistorySource(rpc, cfg.Coin, cfg.Network)
+	decoder, err := bitcoin.NewScriptDecoder(cfg.Network)
+	if err != nil {
+		return fmt.Errorf("init script decoder: %w", err)
+	}
+	outputConverter := bitcoin.NewOutputConverter(decoder, cfg.Network)
+	source, err := bitcoin.NewHistorySource(outputConverter, rpc, cfg.Network)
 	if err != nil {
 		return fmt.Errorf("init bitcoin history source: %w", err)
 	}

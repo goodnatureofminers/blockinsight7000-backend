@@ -16,7 +16,8 @@ type scriptDecoder struct {
 	params *chaincfg.Params
 }
 
-func newScriptDecoder(network model.Network) (*scriptDecoder, error) {
+// NewScriptDecoder initializes a decoder for extracting addresses using params of the provided network.
+func NewScriptDecoder(network model.Network) (ScriptDecoder, error) {
 	params, err := chainParamsForNetwork(network)
 	if err != nil {
 		return nil, err
