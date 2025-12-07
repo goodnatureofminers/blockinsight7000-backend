@@ -51,7 +51,7 @@ coverage:
 		color="#dfb317"; \
 	fi; \
 	printf '%s\n' \
-		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" role=\"img\" aria-label=\"coverage: $${total}%\">" \
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"20\" role=\"img\" aria-label=\"Coverage: $${total}%\">" \
 		"  <linearGradient id=\"s\" x2=\"0\" y2=\"100%\">" \
 		"    <stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\".7\"/>" \
 		"    <stop offset=\".1\" stop-opacity=\".1\"/>" \
