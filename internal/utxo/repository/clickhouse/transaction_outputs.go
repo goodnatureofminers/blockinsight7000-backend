@@ -43,6 +43,7 @@ ORDER BY output_index ASC`
 	var outputs []model.TransactionOutput
 	for rows.Next() {
 		var output model.TransactionOutput
+		output.Coin = coin
 		output.Network = network
 		output.TxID = txid
 		if err = rows.Scan(

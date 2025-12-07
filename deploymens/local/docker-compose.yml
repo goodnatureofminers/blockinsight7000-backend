@@ -2,7 +2,7 @@ name: blockinsight7000
 
 services:
   ch-keeper:
-    image: clickhouse/clickhouse-keeper:latest
+    image: clickhouse/clickhouse-keeper:25.11
     container_name: ch-keeper
     restart: unless-stopped
     ports:
@@ -15,7 +15,7 @@ services:
       --config-file=/etc/clickhouse-keeper/config.xml
 
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: clickhouse/clickhouse-server:25.11
     container_name: clickhouse
     restart: unless-stopped
     depends_on:
