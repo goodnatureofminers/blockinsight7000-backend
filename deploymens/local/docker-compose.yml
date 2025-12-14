@@ -83,11 +83,23 @@ services:
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/dashboards:/var/lib/grafana/dashboards
 
+  btc-follower-ingester:
+    build:
+      context: ../..
+      dockerfile: ./build/utxo.Dockerfile
+    entrypoint:
+      - /usr/bin/utxo-follower-ingester
+    restart: unless-stopped
+    depends_on:
+      - clickhouse
+      - bitcoind-testnet
+    env_file:
+      - ./envs/.env.btc-follower-ingester
+
   btc-history-ingester:
     build:
       context: ../..
       dockerfile: ./build/utxo.Dockerfile
-    container_name: btc-history-ingester
     entrypoint:
       - /usr/bin/utxo-history-ingester
     restart: unless-stopped
@@ -101,7 +113,6 @@ services:
     build:
       context: ../..
       dockerfile: ./build/utxo.Dockerfile
-    container_name: btc-backfill-ingester
     entrypoint:
       - /usr/bin/utxo-backfill-ingester
     restart: unless-stopped

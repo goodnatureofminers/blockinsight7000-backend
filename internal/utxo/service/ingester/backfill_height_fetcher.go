@@ -14,7 +14,7 @@ type backfillHeightFetcher struct {
 }
 
 func (f *backfillHeightFetcher) Fetch(ctx context.Context) ([]uint64, error) {
-	maxHeight, err := f.repository.MaxContiguousBlockHeight(ctx, f.coin, f.network)
+	maxHeight, err := f.repository.MaxContiguousBlockHeightByStatuses(ctx, f.coin, f.network, []model.BlockStatus{model.BlockUnprocessed, model.BlockProcessed})
 	if err != nil {
 		return nil, err
 	}

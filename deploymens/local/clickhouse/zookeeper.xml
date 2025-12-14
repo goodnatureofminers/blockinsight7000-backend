@@ -1,0 +1,15 @@
+<clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+
+    <zookeeper>
+        <node index="1">
+            <host>ch-keeper</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+
+    <!-- Enable DDL worker against external keeper -->
+    <distributed_ddl>
+        <path>/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+</clickhouse>

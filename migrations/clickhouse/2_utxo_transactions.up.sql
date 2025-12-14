@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS utxo_transactions (
     version UInt32 CODEC(ZSTD(1)),
     locktime UInt32 CODEC(ZSTD(1)),
     fee UInt64 CODEC(ZSTD(1)),
-    input_count UInt16 CODEC(ZSTD(1)),
-    output_count UInt16 CODEC(ZSTD(1)),
+    input_count UInt32 CODEC(ZSTD(1)),
+    output_count UInt32 CODEC(ZSTD(1)),
     updated_at DateTime('UTC') DEFAULT now() CODEC(Delta(4), LZ4)
 )
 ENGINE = ReplacingMergeTree(updated_at)

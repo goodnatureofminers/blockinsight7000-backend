@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -317,7 +318,8 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 					Time:   1_700_000_500,
 					Bits:   "1",
 					Tx: []btcjson.TxRawResult{
-						{Txid: "tx", Vin: make([]btcjson.Vin, math.MaxUint16+1)},
+						// Use a fabricated slice header to simulate an overflow without allocating huge memory.
+						{Txid: "tx", Vin: makeLargeSlice[btcjson.Vin](int(math.MaxUint32) + 1)},
 					},
 				}, nil)
 				// Output converter should not be called due to vin overflow.
@@ -370,4 +372,12 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 			}
 		})
 	}
+}
+
+// makeLargeSlice constructs a slice header with the provided length without allocating backing memory.
+// Safe here because callers only use len(...) and never access elements.
+func makeLargeSlice[T any](length int) []T {
+	ptr := new(T)
+	//nolint:gosec // Unsafe slice used only to simulate an oversized length; elements are never accessed.
+	return unsafe.Slice(ptr, length)
 }

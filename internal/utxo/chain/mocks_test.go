@@ -49,3 +49,18 @@ func (mr *MockClickhouseRepositoryMockRecorder) TransactionOutputs(ctx, coin, ne
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionOutputs", reflect.TypeOf((*MockClickhouseRepository)(nil).TransactionOutputs), ctx, coin, network, txid)
 }
+
+// TransactionOutputsByTxIDs mocks base method.
+func (m *MockClickhouseRepository) TransactionOutputsByTxIDs(ctx context.Context, coin model.Coin, network model.Network, txids []string) (map[string][]model.TransactionOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransactionOutputsByTxIDs", ctx, coin, network, txids)
+	ret0, _ := ret[0].(map[string][]model.TransactionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TransactionOutputsByTxIDs indicates an expected call of TransactionOutputsByTxIDs.
+func (mr *MockClickhouseRepositoryMockRecorder) TransactionOutputsByTxIDs(ctx, coin, network, txids interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransactionOutputsByTxIDs", reflect.TypeOf((*MockClickhouseRepository)(nil).TransactionOutputsByTxIDs), ctx, coin, network, txids)
+}

@@ -24,14 +24,14 @@ import (
 )
 
 type config struct {
-	ClickhouseDSN string        `long:"clickhouse-dsn" env:"BTC_HISTORY_CLICKHOUSE_DSN" description:"ClickHouse DSN"`
-	Coin          model.Coin    `long:"coin" env:"BTC_HISTORY_COIN" description:"coin name" required:"true"`
-	Network       model.Network `long:"network" env:"BTC_HISTORY_NETWORK" description:"network name" required:"true"`
-	RPCURL        string        `long:"rpc-url" env:"BTC_HISTORY_RPC_URL" description:"Bitcoin RPC URL" default:"http://127.0.0.1:8332"`
-	RPCUser       string        `long:"rpc-user" env:"BTC_HISTORY_RPC_USER" description:"Bitcoin RPC username"`
-	RPCPassword   string        `long:"rpc-password" env:"BTC_HISTORY_RPC_PASSWORD" description:"Bitcoin RPC password"`
-	HTTPTimeout   time.Duration `long:"http-timeout" env:"BTC_HISTORY_HTTP_TIMEOUT" description:"HTTP timeout for RPC requests" default:"30s"`
-	MetricsAddr   string        `long:"metrics-addr" env:"BTC_HISTORY_METRICS_ADDR" description:"address for metrics server" default:":2112"`
+	ClickhouseDSN string        `long:"clickhouse-dsn" env:"UTXO_HISTORY_CLICKHOUSE_DSN" description:"ClickHouse DSN"`
+	Coin          model.Coin    `long:"coin" env:"UTXO_HISTORY_COIN" description:"coin name" required:"true"`
+	Network       model.Network `long:"network" env:"UTXO_HISTORY_NETWORK" description:"network name" required:"true"`
+	RPCURL        string        `long:"rpc-url" env:"UTXO_HISTORY_RPC_URL" description:"Bitcoin RPC URL" default:"http://127.0.0.1:8332"`
+	RPCUser       string        `long:"rpc-user" env:"UTXO_HISTORY_RPC_USER" description:"Bitcoin RPC username"`
+	RPCPassword   string        `long:"rpc-password" env:"UTXO_HISTORY_RPC_PASSWORD" description:"Bitcoin RPC password"`
+	HTTPTimeout   time.Duration `long:"http-timeout" env:"UTXO_HISTORY_HTTP_TIMEOUT" description:"HTTP timeout for RPC requests" default:"30s"`
+	MetricsAddr   string        `long:"metrics-addr" env:"UTXO_HISTORY_METRICS_ADDR" description:"address for metrics server" default:":2112"`
 }
 
 func main() {

@@ -66,11 +66,11 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 
 	for _, tx := range src.Tx {
 		inputCount := len(tx.Vin)
-		if inputCount > math.MaxUint16 {
+		if inputCount > math.MaxUint32 {
 			return nil, fmt.Errorf("tx %s vin count overflow: %d", tx.Txid, inputCount)
 		}
 		outputCount := len(tx.Vout)
-		if outputCount > math.MaxUint16 {
+		if outputCount > math.MaxUint32 {
 			return nil, fmt.Errorf("tx %s vout count overflow: %d", tx.Txid, outputCount)
 		}
 
@@ -97,8 +97,8 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 			VSize:       vsize,
 			Version:     version,
 			LockTime:    tx.LockTime,
-			InputCount:  uint16(inputCount),
-			OutputCount: uint16(outputCount),
+			InputCount:  uint32(inputCount),
+			OutputCount: uint32(outputCount),
 		})
 
 		txOutputs, err := s.outputConverter.Convert(tx, block.Height, block.Timestamp)

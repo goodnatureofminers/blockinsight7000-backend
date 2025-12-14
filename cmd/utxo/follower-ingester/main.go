@@ -1,4 +1,4 @@
-// Package main runs the backfill ingester service.
+// Package main runs the follower ingester service.
 package main
 
 import (
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -16,7 +15,6 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/metrics"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/bitcoin"
-	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/repository/clickhouse"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/service/ingester"
@@ -26,15 +24,15 @@ import (
 )
 
 type config struct {
-	ClickhouseDSN string        `long:"clickhouse-dsn" env:"UTXO_BACKFILL_CLICKHOUSE_DSN" description:"ClickHouse DSN"`
-	Coin          model.Coin    `long:"coin" env:"UTXO_BACKFILL_COIN" description:"coin name" required:"true"`
-	Network       model.Network `long:"network" env:"UTXO_BACKFILL_NETWORK" description:"network name" required:"true"`
-	RPCURL        string        `long:"rpc-url" env:"UTXO_BACKFILL_RPC_URL" description:"Bitcoin RPC URL" default:"http://127.0.0.1:8332"`
-	RPCUser       string        `long:"rpc-user" env:"UTXO_BACKFILL_RPC_USER" description:"Bitcoin RPC username"`
-	RPCPassword   string        `long:"rpc-password" env:"UTXO_BACKFILL_RPC_PASSWORD" description:"Bitcoin RPC password"`
-	HTTPTimeout   time.Duration `long:"http-timeout" env:"UTXO_BACKFILL_HTTP_TIMEOUT" description:"HTTP timeout for RPC requests" default:"30s"`
-	MetricsAddr   string        `long:"metrics-addr" env:"UTXO_BACKFILL_METRICS_ADDR" description:"address for metrics server" default:":2112"`
-	EnablePprof   bool          `long:"enable-pprof" env:"UTXO_BACKFILL_ENABLE_PPROF" description:"expose pprof handlers on the metrics server"`
+	ClickhouseDSN string        `long:"clickhouse-dsn" env:"UTXO_FOLLOWER_CLICKHOUSE_DSN" description:"ClickHouse DSN"`
+	Coin          model.Coin    `long:"coin" env:"UTXO_FOLLOWER_COIN" description:"coin name" required:"true"`
+	Network       model.Network `long:"network" env:"UTXO_FOLLOWER_NETWORK" description:"network name" required:"true"`
+	RPCURL        string        `long:"rpc-url" env:"UTXO_FOLLOWER_RPC_URL" description:"Bitcoin RPC URL" default:"http://127.0.0.1:8332"`
+	RPCUser       string        `long:"rpc-user" env:"UTXO_FOLLOWER_RPC_USER" description:"Bitcoin RPC username"`
+	RPCPassword   string        `long:"rpc-password" env:"UTXO_FOLLOWER_RPC_PASSWORD" description:"Bitcoin RPC password"`
+	HTTPTimeout   time.Duration `long:"http-timeout" env:"UTXO_FOLLOWER_HTTP_TIMEOUT" description:"HTTP timeout for RPC requests" default:"30s"`
+	MetricsAddr   string        `long:"metrics-addr" env:"UTXO_FOLLOWER_METRICS_ADDR" description:"address for metrics server" default:":2112"`
+	RawBlockAddr  string        `long:"rawblock-addr" env:"UTXO_FOLLOWER_RAWBLOCK_ADDR" description:"zmq endpoint for hashblock events" default:"tcp://127.0.0.1:28332"`
 }
 
 func main() {
@@ -64,12 +62,17 @@ func main() {
 	}
 
 	if err := run(ctx, cfg, logger); err != nil {
-		logger.Fatal("utxo history ingester failed", zap.Error(err))
+		logger.Fatal("utxo follower ingester failed", zap.Error(err))
 	}
 }
 
 func run(ctx context.Context, cfg config, logger *zap.Logger) error {
-	startMetricsServer(ctx, cfg.MetricsAddr, cfg.EnablePprof, logger)
+	startMetricsServer(ctx, cfg.MetricsAddr, logger)
+
+	blockSignal, err := startBlockSignal(ctx, cfg.RawBlockAddr, logger)
+	if err != nil {
+		return fmt.Errorf("init block notifier: %w", err)
+	}
 
 	repo, err := clickhouse.NewRepository(cfg.ClickhouseDSN, metrics.NewClickhouseRepository())
 	if err != nil {
@@ -84,24 +87,24 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 		rpcClient.WaitForShutdown()
 	}()
 	rpc := bitcoin.NewRPCClient(rpcClient, metrics.NewRPCClient(cfg.Coin, cfg.Network))
-	resolver := chain.NewTransactionOutputResolver(repo, cfg.Coin, cfg.Network)
 	decoder, err := bitcoin.NewScriptDecoder(cfg.Network)
 	if err != nil {
 		return fmt.Errorf("init script decoder: %w", err)
 	}
 	outputConverter := bitcoin.NewOutputConverter(decoder, cfg.Network)
-	source, err := bitcoin.NewBackfillSource(resolver, outputConverter, rpc, cfg.Network)
+	source, err := bitcoin.NewHistorySource(outputConverter, rpc, cfg.Network)
 	if err != nil {
-		return fmt.Errorf("init bitcoin backfill source: %w", err)
+		return fmt.Errorf("init bitcoin history source: %w", err)
 	}
-	backfillMetrics := metrics.NewBackfillIngester(cfg.Coin, cfg.Network)
-	svc, err := ingester.NewBackfillIngesterService(
+	followerIngesterMetrics := metrics.NewFollowerIngester(cfg.Coin, cfg.Network)
+	svc, err := ingester.NewFollowerIngesterService(
 		repo,
 		source,
-		backfillMetrics,
+		followerIngesterMetrics,
 		cfg.Coin,
 		cfg.Network,
 		logger,
+		blockSignal,
 	)
 	if err != nil {
 		return err
@@ -109,17 +112,9 @@ func run(ctx context.Context, cfg config, logger *zap.Logger) error {
 	return svc.Run(ctx)
 }
 
-func startMetricsServer(ctx context.Context, addr string, enablePprof bool, logger *zap.Logger) {
+func startMetricsServer(ctx context.Context, addr string, logger *zap.Logger) {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	if enablePprof {
-		// pprof endpoints for runtime profiling.
-		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	}
 
 	srv := &http.Server{
 		Addr:              addr,

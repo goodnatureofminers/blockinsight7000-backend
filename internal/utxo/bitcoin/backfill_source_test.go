@@ -149,14 +149,14 @@ func TestBackfillSource_FetchBlock(t *testing.T) {
 					},
 				}, nil)
 
-				mockResolver.EXPECT().Seed("coinbase", gomock.Any()).Times(1)
-				mockResolver.EXPECT().Seed("spend", gomock.Any()).Times(1)
 				mockResolver.EXPECT().
-					Resolve(gomock.Any(), "ext").
-					Return([]model.TransactionOutput{{
-						Value:     5000000000,
-						Addresses: []string{"extAddr"},
-					}}, nil)
+					ResolveBatch(gomock.Any(), []string{"ext"}).
+					Return(map[string][]model.TransactionOutput{
+						"ext": {{
+							Value:     5000000000,
+							Addresses: []string{"extAddr"},
+						}},
+					}, nil)
 
 				outputs := &stubOutputConverter{
 					outputs: map[string][]model.TransactionOutput{
@@ -274,17 +274,13 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		args    func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult)
+		args    func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput)
 		want    []model.TransactionInput
 		wantErr bool
 	}{
 		{
 			name: "coinbase input",
-			args: func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult) {
-				ctrl := gomock.NewController(t)
-				t.Cleanup(ctrl.Finish)
-
-				resolver := NewMockTransactionOutputResolver(ctrl)
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
 				tx := btcjson.TxRawResult{
 					Txid: "coinbase-tx",
 					Vin: []btcjson.Vin{{
@@ -292,8 +288,8 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 						Sequence: 123,
 					}},
 				}
-				src := &BackfillSource{network: network, resolver: resolver}
-				return context.Background(), src, tx
+				src := &BackfillSource{network: network}
+				return context.Background(), src, tx, nil
 			},
 			want: []model.TransactionInput{{
 				Coin:        model.BTC,
@@ -311,18 +307,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 		},
 		{
 			name: "resolves previous output",
-			args: func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult) {
-				ctrl := gomock.NewController(t)
-				t.Cleanup(ctrl.Finish)
-
-				resolver := NewMockTransactionOutputResolver(ctrl)
-				resolver.EXPECT().
-					Resolve(gomock.Any(), "prev-tx").
-					Return([]model.TransactionOutput{{
-						Value:     42,
-						Addresses: []string{"addr1"},
-					}}, nil)
-
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
 				tx := btcjson.TxRawResult{
 					Txid: "current",
 					Vin: []btcjson.Vin{{
@@ -332,8 +317,14 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 						Witness:  []string{"w1"},
 					}},
 				}
-				src := &BackfillSource{network: network, resolver: resolver}
-				return context.Background(), src, tx
+				src := &BackfillSource{network: network}
+				resolved := map[string][]model.TransactionOutput{
+					"prev-tx": {{
+						Value:     42,
+						Addresses: []string{"addr1"},
+					}},
+				}
+				return context.Background(), src, tx, resolved
 			},
 			want: []model.TransactionInput{{
 				Coin:         model.BTC,
@@ -355,15 +346,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 		},
 		{
 			name: "missing previous output index returns error",
-			args: func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult) {
-				ctrl := gomock.NewController(t)
-				t.Cleanup(ctrl.Finish)
-
-				resolver := NewMockTransactionOutputResolver(ctrl)
-				resolver.EXPECT().
-					Resolve(gomock.Any(), "prev").
-					Return([]model.TransactionOutput{}, nil)
-
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
 				tx := btcjson.TxRawResult{
 					Txid: "bad",
 					Vin: []btcjson.Vin{{
@@ -371,8 +354,10 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 						Vout: 1,
 					}},
 				}
-				src := &BackfillSource{network: network, resolver: resolver}
-				return context.Background(), src, tx
+				src := &BackfillSource{network: network}
+				return context.Background(), src, tx, map[string][]model.TransactionOutput{
+					"prev": {},
+				}
 			},
 			wantErr: true,
 		},
@@ -380,9 +365,9 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, s, tx := tt.args(t)
+			ctx, s, tx, resolved := tt.args(t)
 
-			got, err := s.convertInputs(ctx, tx, 100, blockTime)
+			got, err := s.convertInputs(ctx, tx, 100, blockTime, resolved)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("convertInputs() error = %v, wantErr %v", err, tt.wantErr)
 			}

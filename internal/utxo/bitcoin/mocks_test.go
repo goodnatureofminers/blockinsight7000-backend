@@ -53,16 +53,19 @@ func (mr *MockTransactionOutputResolverMockRecorder) Resolve(ctx, txid interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resolve", reflect.TypeOf((*MockTransactionOutputResolver)(nil).Resolve), ctx, txid)
 }
 
-// Seed mocks base method.
-func (m *MockTransactionOutputResolver) Seed(txid string, outputs []model.TransactionOutput) {
+// ResolveBatch mocks base method.
+func (m *MockTransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Seed", txid, outputs)
+	ret := m.ctrl.Call(m, "ResolveBatch", ctx, txids)
+	ret0, _ := ret[0].(map[string][]model.TransactionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// Seed indicates an expected call of Seed.
-func (mr *MockTransactionOutputResolverMockRecorder) Seed(txid, outputs interface{}) *gomock.Call {
+// ResolveBatch indicates an expected call of ResolveBatch.
+func (mr *MockTransactionOutputResolverMockRecorder) ResolveBatch(ctx, txids interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Seed", reflect.TypeOf((*MockTransactionOutputResolver)(nil).Seed), txid, outputs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveBatch", reflect.TypeOf((*MockTransactionOutputResolver)(nil).ResolveBatch), ctx, txids)
 }
 
 // MockRPCMetrics is a mock of RPCMetrics interface.

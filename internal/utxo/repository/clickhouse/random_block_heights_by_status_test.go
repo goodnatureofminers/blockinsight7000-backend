@@ -3,6 +3,7 @@ package clickhouse
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -11,20 +12,42 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
+func TestRepository_RandomBlockHeightsByStatus(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	coin := model.BTC
 	network := model.Mainnet
+	status := model.BlockNew
+	maxHeight := uint64(100)
+	limit := uint64(3)
 
 	tests := []struct {
 		name     string
+		limit    uint64
 		setup    func(t *testing.T) *Repository
-		want     uint64
+		want     []uint64
 		wantErr  bool
 		wantErrf string
 	}{
 		{
-			name: "query error",
+			name:  "limit zero",
+			limit: 0,
+			setup: func(t *testing.T) *Repository {
+				ctrl := gomock.NewController(t)
+				t.Cleanup(ctrl.Finish)
+
+				mockMetrics := NewMockMetrics(ctrl)
+				mockMetrics.EXPECT().
+					Observe("random_block_heights_by_status", coin, network, nil, gomock.AssignableToTypeOf(time.Time{}))
+
+				return &Repository{conn: nil, metrics: mockMetrics}
+			},
+			want: nil,
+		},
+		{
+			name:  "query error",
+			limit: limit,
 			setup: func(t *testing.T) *Repository {
 				ctrl := gomock.NewController(t)
 				t.Cleanup(ctrl.Finish)
@@ -35,10 +58,10 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 
 				gomock.InOrder(
 					mockConn.EXPECT().
-						Query(ctx, maxContiguousBlockHeightQuery(), coin, network).
+						Query(ctx, gomock.Any(), coin, network, status, maxHeight, limit).
 						Return(nil, queryErr),
 					mockMetrics.EXPECT().
-						Observe("max_contiguous_block_height", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
+						Observe("random_block_heights_by_status", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
 						Do(func(_ string, _ model.Coin, _ model.Network, err error, _ time.Time) {
 							if !errors.Is(err, queryErr) {
 								t.Fatalf("unexpected error in metrics: %v", err)
@@ -49,39 +72,11 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 				return &Repository{conn: mockConn, metrics: mockMetrics}
 			},
 			wantErr:  true,
-			wantErrf: "query max contiguous block height",
+			wantErrf: "query random block heights by status",
 		},
 		{
-			name: "no rows",
-			setup: func(t *testing.T) *Repository {
-				ctrl := gomock.NewController(t)
-				t.Cleanup(ctrl.Finish)
-
-				mockConn := NewMockConn(ctrl)
-				mockRows := NewMockRows(ctrl)
-				mockMetrics := NewMockMetrics(ctrl)
-
-				gomock.InOrder(
-					mockConn.EXPECT().
-						Query(ctx, maxContiguousBlockHeightQuery(), coin, network).
-						Return(mockRows, nil),
-					mockRows.EXPECT().
-						Next().
-						Return(false),
-					mockRows.EXPECT().
-						Close().
-						Return(nil),
-					mockMetrics.EXPECT().
-						Observe("max_contiguous_block_height", coin, network, nil, gomock.AssignableToTypeOf(time.Time{})),
-				)
-
-				return &Repository{conn: mockConn, metrics: mockMetrics}
-			},
-			wantErr:  true,
-			wantErrf: "not found max contiguous block height",
-		},
-		{
-			name: "scan error",
+			name:  "scan error",
+			limit: limit,
 			setup: func(t *testing.T) *Repository {
 				ctrl := gomock.NewController(t)
 				t.Cleanup(ctrl.Finish)
@@ -93,7 +88,7 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 
 				gomock.InOrder(
 					mockConn.EXPECT().
-						Query(ctx, maxContiguousBlockHeightQuery(), coin, network).
+						Query(ctx, gomock.Any(), coin, network, status, maxHeight, limit).
 						Return(mockRows, nil),
 					mockRows.EXPECT().
 						Next().
@@ -105,7 +100,7 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 						Close().
 						Return(nil),
 					mockMetrics.EXPECT().
-						Observe("max_contiguous_block_height", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
+						Observe("random_block_heights_by_status", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
 						Do(func(_ string, _ model.Coin, _ model.Network, err error, _ time.Time) {
 							if !errors.Is(err, scanErr) {
 								t.Fatalf("unexpected error in metrics: %v", err)
@@ -116,10 +111,11 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 				return &Repository{conn: mockConn, metrics: mockMetrics}
 			},
 			wantErr:  true,
-			wantErrf: "scan max contiguous block height",
+			wantErrf: "scan random block height",
 		},
 		{
-			name: "close error does not fail call but reported in metrics",
+			name:  "rows error after iteration",
+			limit: limit,
 			setup: func(t *testing.T) *Repository {
 				ctrl := gomock.NewController(t)
 				t.Cleanup(ctrl.Finish)
@@ -127,29 +123,25 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 				mockConn := NewMockConn(ctrl)
 				mockRows := NewMockRows(ctrl)
 				mockMetrics := NewMockMetrics(ctrl)
-				closeErr := errors.New("close failed")
+				rowsErr := errors.New("rows error")
 
 				gomock.InOrder(
 					mockConn.EXPECT().
-						Query(ctx, maxContiguousBlockHeightQuery(), coin, network).
+						Query(ctx, gomock.Any(), coin, network, status, maxHeight, limit).
 						Return(mockRows, nil),
 					mockRows.EXPECT().
 						Next().
-						Return(true),
+						Return(false),
 					mockRows.EXPECT().
-						Scan(gomock.Any()).
-						Do(func(dest ...any) {
-							ptr, _ := dest[0].(*uint64)
-							*ptr = 42
-						}).
-						Return(nil),
+						Err().
+						Return(rowsErr),
 					mockRows.EXPECT().
 						Close().
-						Return(closeErr),
+						Return(nil),
 					mockMetrics.EXPECT().
-						Observe("max_contiguous_block_height", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
+						Observe("random_block_heights_by_status", coin, network, gomock.Any(), gomock.AssignableToTypeOf(time.Time{})).
 						Do(func(_ string, _ model.Coin, _ model.Network, err error, _ time.Time) {
-							if !errors.Is(err, closeErr) {
+							if !errors.Is(err, rowsErr) {
 								t.Fatalf("unexpected error in metrics: %v", err)
 							}
 						}),
@@ -157,10 +149,12 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 
 				return &Repository{conn: mockConn, metrics: mockMetrics}
 			},
-			want: 42,
+			wantErr:  true,
+			wantErrf: "iterate random block heights by status",
 		},
 		{
-			name: "success",
+			name:  "success",
+			limit: limit,
 			setup: func(t *testing.T) *Repository {
 				ctrl := gomock.NewController(t)
 				t.Cleanup(ctrl.Finish)
@@ -171,7 +165,7 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 
 				gomock.InOrder(
 					mockConn.EXPECT().
-						Query(ctx, maxContiguousBlockHeightQuery(), coin, network).
+						Query(ctx, gomock.Any(), coin, network, status, maxHeight, limit).
 						Return(mockRows, nil),
 					mockRows.EXPECT().
 						Next().
@@ -179,50 +173,53 @@ func TestRepository_MaxContiguousBlockHeight(t *testing.T) {
 					mockRows.EXPECT().
 						Scan(gomock.Any()).
 						Do(func(dest ...any) {
-							ptr, _ := dest[0].(*uint64)
-							*ptr = 100
+							p := dest[0].(*uint64)
+							*p = 2
 						}).
+						Return(nil),
+					mockRows.EXPECT().
+						Next().
+						Return(true),
+					mockRows.EXPECT().
+						Scan(gomock.Any()).
+						Do(func(dest ...any) {
+							p := dest[0].(*uint64)
+							*p = 7
+						}).
+						Return(nil),
+					mockRows.EXPECT().
+						Next().
+						Return(false),
+					mockRows.EXPECT().
+						Err().
 						Return(nil),
 					mockRows.EXPECT().
 						Close().
 						Return(nil),
 					mockMetrics.EXPECT().
-						Observe("max_contiguous_block_height", coin, network, nil, gomock.AssignableToTypeOf(time.Time{})),
+						Observe("random_block_heights_by_status", coin, network, nil, gomock.AssignableToTypeOf(time.Time{})),
 				)
 
 				return &Repository{conn: mockConn, metrics: mockMetrics}
 			},
-			want: 100,
+			want: []uint64{2, 7},
 		},
 	}
+
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			r := tt.setup(t)
-			got, err := r.MaxContiguousBlockHeight(ctx, coin, network)
+			repo := tt.setup(t)
+			got, err := repo.RandomBlockHeightsByStatus(ctx, coin, network, status, maxHeight, tt.limit)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("MaxContiguousBlockHeight() error = %v, wantErr %v", err, tt.wantErr)
-				return
+				t.Fatalf("RandomBlockHeightsByStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.wantErrf != "" && err != nil && !strings.Contains(err.Error(), tt.wantErrf) {
-				t.Fatalf("error %v does not contain %q", err, tt.wantErrf)
+			if err != nil && tt.wantErrf != "" && !strings.Contains(err.Error(), tt.wantErrf) {
+				t.Fatalf("RandomBlockHeightsByStatus() error = %v, want contains %q", err, tt.wantErrf)
 			}
-			if got != tt.want {
-				t.Errorf("MaxContiguousBlockHeight() got = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("RandomBlockHeightsByStatus() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
-}
-
-func maxContiguousBlockHeightQuery() string {
-	return `WITH data AS (
-    SELECT
-        height,
-        row_number() OVER (ORDER BY height) - 1 AS rn
-    FROM utxo_blocks
-    WHERE coin = ? and network =  ?
-    group by height
-)
-SELECT max(height) AS max_contiguous_height
-FROM data
-WHERE rn = height limit 1;`
 }

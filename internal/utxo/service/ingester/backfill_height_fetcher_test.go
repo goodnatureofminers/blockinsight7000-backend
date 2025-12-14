@@ -30,7 +30,7 @@ func Test_backfillHeightFetcher_Fetch(t *testing.T) {
 			prepare: func(ctrl *gomock.Controller) (fields, args) {
 				repo := NewMockClickhouseRepository(ctrl)
 				ctx := context.Background()
-				repo.EXPECT().MaxContiguousBlockHeight(ctx, model.Coin("btc"), model.Network("mainnet")).Return(uint64(50), nil)
+				repo.EXPECT().MaxContiguousBlockHeightByStatuses(ctx, model.Coin("btc"), model.Network("mainnet"), []model.BlockStatus{model.BlockUnprocessed, model.BlockProcessed}).Return(uint64(50), nil)
 				repo.EXPECT().RandomUnprocessedBlockHeights(ctx, model.Coin("btc"), model.Network("mainnet"), uint64(50), uint64(5)).
 					Return([]uint64{2, 4}, nil)
 				return fields{
@@ -84,12 +84,12 @@ func Test_backfillHeightFetcher_Fetch_errors(t *testing.T) {
 		limit:      5,
 	}
 
-	repo.EXPECT().MaxContiguousBlockHeight(ctx, model.Coin("btc"), model.Network("mainnet")).Return(uint64(0), errors.New("max failed"))
+	repo.EXPECT().MaxContiguousBlockHeightByStatuses(ctx, model.Coin("btc"), model.Network("mainnet"), []model.BlockStatus{model.BlockUnprocessed, model.BlockProcessed}).Return(uint64(0), errors.New("max failed"))
 	if _, err := f.Fetch(ctx); err == nil {
 		t.Fatalf("expected error from MaxContiguousBlockHeight")
 	}
 
-	repo.EXPECT().MaxContiguousBlockHeight(ctx, model.Coin("btc"), model.Network("mainnet")).Return(uint64(50), nil)
+	repo.EXPECT().MaxContiguousBlockHeightByStatuses(ctx, model.Coin("btc"), model.Network("mainnet"), []model.BlockStatus{model.BlockUnprocessed, model.BlockProcessed}).Return(uint64(50), nil)
 	repo.EXPECT().RandomUnprocessedBlockHeights(ctx, model.Coin("btc"), model.Network("mainnet"), uint64(50), uint64(5)).
 		Return(nil, errors.New("unprocessed failed"))
 	if _, err := f.Fetch(ctx); err == nil {

@@ -7,13 +7,16 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-// TransactionOutputResolver caches outputs during block processing to reduce ClickHouse lookups.
+// TransactionOutputResolver fetches outputs during block processing to reduce ClickHouse lookups.
 type TransactionOutputResolver struct {
 	repo    ClickhouseRepository
 	coin    model.Coin
 	network model.Network
-	local   map[string][]model.TransactionOutput
 }
+
+// transactionOutputResolverBatchSize controls how many txids are fetched in one repository call.
+// It is a var to allow overriding in tests.
+var transactionOutputResolverBatchSize = 1000
 
 // NewTransactionOutputResolver constructs a TransactionOutputResolver for a specific network.
 func NewTransactionOutputResolver(repo ClickhouseRepository, coin model.Coin, network model.Network) *TransactionOutputResolver {
@@ -21,30 +24,59 @@ func NewTransactionOutputResolver(repo ClickhouseRepository, coin model.Coin, ne
 		repo:    repo,
 		coin:    coin,
 		network: network,
-		local:   make(map[string][]model.TransactionOutput),
 	}
-}
-
-// Seed primes the local cache with outputs for a given transaction.
-func (r *TransactionOutputResolver) Seed(txid string, outputs []model.TransactionOutput) {
-	r.local[txid] = outputs
 }
 
 // Resolve returns outputs for a transaction, consulting the cache first.
 func (r *TransactionOutputResolver) Resolve(ctx context.Context, txid string) ([]model.TransactionOutput, error) {
-	if outputs, ok := r.local[txid]; ok {
-		return outputs, nil
-	}
-
 	outputs, err := r.repo.TransactionOutputs(ctx, r.coin, r.network, txid)
 	if err != nil {
 		return nil, fmt.Errorf("query outputs for tx %s: %w", txid, err)
 	}
 
-	for i := range outputs {
-		outputs[i].Coin = r.coin
-		outputs[i].Network = r.network
-	}
-	r.local[txid] = outputs
 	return outputs, nil
+}
+
+// ResolveBatch returns outputs for many transactions, consulting the cache first and reusing results across the batch.
+func (r *TransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error) {
+	result := make(map[string][]model.TransactionOutput, len(txids))
+
+	seen := make(map[string]struct{}, len(txids))
+	missing := make([]string, 0, len(txids))
+
+	for _, txid := range txids {
+		if _, dup := seen[txid]; dup {
+			continue
+		}
+		seen[txid] = struct{}{}
+		missing = append(missing, txid)
+	}
+
+	if len(missing) > 0 {
+		size := transactionOutputResolverBatchSize
+		if size <= 0 {
+			size = 1000
+		}
+		for start := 0; start < len(missing); start += size {
+			end := start + size
+			if end > len(missing) {
+				end = len(missing)
+			}
+
+			fromRepo, err := r.repo.TransactionOutputsByTxIDs(ctx, r.coin, r.network, missing[start:end])
+			if err != nil {
+				return nil, fmt.Errorf("query outputs for txids: %w", err)
+			}
+			for txid, outputs := range fromRepo {
+				result[txid] = outputs
+			}
+			for _, txid := range missing[start:end] {
+				if _, ok := result[txid]; !ok {
+					result[txid] = nil
+				}
+			}
+		}
+	}
+
+	return result, nil
 }

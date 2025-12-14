@@ -13,8 +13,8 @@ type Transaction struct {
 	VSize       uint32
 	Version     uint32
 	LockTime    uint32
-	InputCount  uint16
-	OutputCount uint16
+	InputCount  uint32
+	OutputCount uint32
 }
 
 // TransactionInput describes a reference to a previous transaction output.
