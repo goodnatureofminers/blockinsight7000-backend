@@ -280,6 +280,53 @@ func (mr *MockHistoryIngesterMetricsMockRecorder) ObserveProcessHeight(err, heig
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveProcessHeight", reflect.TypeOf((*MockHistoryIngesterMetrics)(nil).ObserveProcessHeight), err, height, started)
 }
 
+// MockFollowerIngesterMetrics is a mock of FollowerIngesterMetrics interface.
+type MockFollowerIngesterMetrics struct {
+	ctrl     *gomock.Controller
+	recorder *MockFollowerIngesterMetricsMockRecorder
+}
+
+// MockFollowerIngesterMetricsMockRecorder is the mock recorder for MockFollowerIngesterMetrics.
+type MockFollowerIngesterMetricsMockRecorder struct {
+	mock *MockFollowerIngesterMetrics
+}
+
+// NewMockFollowerIngesterMetrics creates a new mock instance.
+func NewMockFollowerIngesterMetrics(ctrl *gomock.Controller) *MockFollowerIngesterMetrics {
+	mock := &MockFollowerIngesterMetrics{ctrl: ctrl}
+	mock.recorder = &MockFollowerIngesterMetricsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockFollowerIngesterMetrics) EXPECT() *MockFollowerIngesterMetricsMockRecorder {
+	return m.recorder
+}
+
+// ObserveFetchMissing mocks base method.
+func (m *MockFollowerIngesterMetrics) ObserveFetchMissing(err error, started time.Time) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ObserveFetchMissing", err, started)
+}
+
+// ObserveFetchMissing indicates an expected call of ObserveFetchMissing.
+func (mr *MockFollowerIngesterMetricsMockRecorder) ObserveFetchMissing(err, started interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveFetchMissing", reflect.TypeOf((*MockFollowerIngesterMetrics)(nil).ObserveFetchMissing), err, started)
+}
+
+// ObserveProcessBatch mocks base method.
+func (m *MockFollowerIngesterMetrics) ObserveProcessBatch(err error, heights int, started time.Time) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ObserveProcessBatch", err, heights, started)
+}
+
+// ObserveProcessBatch indicates an expected call of ObserveProcessBatch.
+func (mr *MockFollowerIngesterMetricsMockRecorder) ObserveProcessBatch(err, heights, started interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveProcessBatch", reflect.TypeOf((*MockFollowerIngesterMetrics)(nil).ObserveProcessBatch), err, heights, started)
+}
+
 // MockHistorySource is a mock of HistorySource interface.
 type MockHistorySource struct {
 	ctrl     *gomock.Controller
@@ -465,19 +512,49 @@ func (mr *MockClickhouseRepositoryMockRecorder) InsertTransactions(ctx, txs inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTransactions", reflect.TypeOf((*MockClickhouseRepository)(nil).InsertTransactions), ctx, txs)
 }
 
-// MaxContiguousBlockHeight mocks base method.
-func (m *MockClickhouseRepository) MaxContiguousBlockHeight(ctx context.Context, coin model.Coin, network model.Network) (uint64, error) {
+// MaxBlockHeight mocks base method.
+func (m *MockClickhouseRepository) MaxBlockHeight(ctx context.Context, coin model.Coin, network model.Network) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MaxContiguousBlockHeight", ctx, coin, network)
+	ret := m.ctrl.Call(m, "MaxBlockHeight", ctx, coin, network)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// MaxContiguousBlockHeight indicates an expected call of MaxContiguousBlockHeight.
-func (mr *MockClickhouseRepositoryMockRecorder) MaxContiguousBlockHeight(ctx, coin, network interface{}) *gomock.Call {
+// MaxBlockHeight indicates an expected call of MaxBlockHeight.
+func (mr *MockClickhouseRepositoryMockRecorder) MaxBlockHeight(ctx, coin, network interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxContiguousBlockHeight", reflect.TypeOf((*MockClickhouseRepository)(nil).MaxContiguousBlockHeight), ctx, coin, network)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxBlockHeight", reflect.TypeOf((*MockClickhouseRepository)(nil).MaxBlockHeight), ctx, coin, network)
+}
+
+// MaxContiguousBlockHeightByStatuses mocks base method.
+func (m *MockClickhouseRepository) MaxContiguousBlockHeightByStatuses(ctx context.Context, coin model.Coin, network model.Network, statuses []model.BlockStatus) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MaxContiguousBlockHeightByStatuses", ctx, coin, network, statuses)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MaxContiguousBlockHeightByStatuses indicates an expected call of MaxContiguousBlockHeightByStatuses.
+func (mr *MockClickhouseRepositoryMockRecorder) MaxContiguousBlockHeightByStatuses(ctx, coin, network, statuses interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaxContiguousBlockHeightByStatuses", reflect.TypeOf((*MockClickhouseRepository)(nil).MaxContiguousBlockHeightByStatuses), ctx, coin, network, statuses)
+}
+
+// RandomBlockHeightsByStatus mocks base method.
+func (m *MockClickhouseRepository) RandomBlockHeightsByStatus(ctx context.Context, coin model.Coin, network model.Network, status model.BlockStatus, maxHeight, limit uint64) ([]uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RandomBlockHeightsByStatus", ctx, coin, network, status, maxHeight, limit)
+	ret0, _ := ret[0].([]uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RandomBlockHeightsByStatus indicates an expected call of RandomBlockHeightsByStatus.
+func (mr *MockClickhouseRepositoryMockRecorder) RandomBlockHeightsByStatus(ctx, coin, network, status, maxHeight, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RandomBlockHeightsByStatus", reflect.TypeOf((*MockClickhouseRepository)(nil).RandomBlockHeightsByStatus), ctx, coin, network, status, maxHeight, limit)
 }
 
 // RandomMissingBlockHeights mocks base method.

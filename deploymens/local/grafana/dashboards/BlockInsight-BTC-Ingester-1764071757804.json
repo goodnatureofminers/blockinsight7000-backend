@@ -88,7 +88,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE-1}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -138,7 +138,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE-1}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -164,7 +164,7 @@
     {
       "datasource": {
         "type": "grafana-clickhouse-datasource",
-        "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE-1}"
+        "uid": "clickhouse"
       },
       "fieldConfig": {
         "defaults": {
@@ -214,7 +214,7 @@
         {
           "datasource": {
             "type": "grafana-clickhouse-datasource",
-            "uid": "${DS_GRAFANA-CLICKHOUSE-DATASOURCE-1}"
+            "uid": "clickhouse"
           },
           "editorType": "sql",
           "format": 1,
@@ -253,7 +253,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -338,12 +338,12 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "expr": "sum by(operation, status)(rate(blockinsight7000_btc_repository_operations_total{network=~\"$network\"}[5m]))",
+          "expr": "sum by(operation, status)(rate(blockinsight7000_clickhouse_repository_operations_total{coin=\"btc\",network=~\"$network\"}[5m]))",
           "legendFormat": "{{operation}} ({{status}})",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           }
         }
       ],
@@ -353,7 +353,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -438,12 +438,12 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, operation, status)(rate(blockinsight7000_btc_repository_operation_duration_seconds_bucket{network=~\"$network\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le, operation, status)(rate(blockinsight7000_clickhouse_repository_operation_duration_seconds_bucket{coin=\"btc\",network=~\"$network\"}[5m]))) * 1000",
           "legendFormat": "{{operation}} ({{status}})",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           }
         }
       ],
@@ -466,7 +466,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -551,12 +551,12 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "expr": "sum by(operation, status)(rate(blockinsight7000_btc_rpc_client_operations_total{network=~\"$network\"}[5m]))",
+          "expr": "sum by(operation, status)(rate(blockinsight7000_rpc_client_operations_total{coin=\"btc\",network=~\"$network\"}[5m]))",
           "legendFormat": "{{operation}} ({{status}})",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           }
         }
       ],
@@ -566,7 +566,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -651,12 +651,12 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, operation, status)(rate(blockinsight7000_btc_rpc_client_operation_duration_seconds_bucket{network=~\"$network\"}[5m]))) * 1000",
+          "expr": "histogram_quantile(0.95, sum by (le, operation, status)(rate(blockinsight7000_rpc_client_operation_duration_seconds_bucket{coin=\"btc\",network=~\"$network\"}[5m]))) * 1000",
           "legendFormat": "{{operation}} ({{status}})",
           "refId": "A",
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           }
         }
       ],
@@ -680,12 +680,12 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "PBFA97CFB590B2093"
         },
         "name": "network",
         "options": [],
         "query": {
-          "query": "label_values(blockinsight7000_btc_repository_operations_total, network)",
+          "query": "label_values(blockinsight7000_clickhouse_repository_operations_total, network)",
           "refId": "Var-Query-network"
         },
         "refresh": 2,

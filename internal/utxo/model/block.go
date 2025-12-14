@@ -7,6 +7,8 @@ import "time"
 type BlockStatus string
 
 var (
+	// BlockNew marks a block placeholder created before full ingestion.
+	BlockNew BlockStatus = "new"
 	// BlockUnprocessed marks a block that has not been ingested yet.
 	BlockUnprocessed BlockStatus = "unprocessed"
 	// BlockProcessed marks a block that has been fully ingested.

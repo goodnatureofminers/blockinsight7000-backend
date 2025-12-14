@@ -52,7 +52,6 @@ func NewHistoryIngesterService(
 		sleepDuration:     sleepDuration,
 		longSleepDuration: longSleepDuration,
 		heightFetcher: &historyHeightFetcher{
-			source:     source,
 			repository: repo,
 			coin:       coin,
 			network:    network,

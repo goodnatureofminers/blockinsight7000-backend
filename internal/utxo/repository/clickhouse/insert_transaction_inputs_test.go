@@ -225,6 +225,109 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 				return &Repository{conn: mockConn, metrics: mockMetrics}
 			},
 		},
+		{
+			name: "splits by partition",
+			inputs: []model.TransactionInput{
+				{
+					Coin:         model.BTC,
+					Network:      model.Mainnet,
+					BlockHeight:  1,
+					BlockTime:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					TxID:         "tx-jan",
+					Index:        0,
+					PrevTxID:     "prev",
+					PrevVout:     0,
+					Sequence:     0,
+					IsCoinbase:   false,
+					Value:        1,
+					ScriptSigHex: "hex",
+					ScriptSigAsm: "asm",
+					Witness:      []string{},
+					Addresses:    []string{},
+				},
+				{
+					Coin:         model.BTC,
+					Network:      model.Mainnet,
+					BlockHeight:  2,
+					BlockTime:    time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+					TxID:         "tx-feb",
+					Index:        0,
+					PrevTxID:     "prev",
+					PrevVout:     0,
+					Sequence:     0,
+					IsCoinbase:   false,
+					Value:        2,
+					ScriptSigHex: "hex",
+					ScriptSigAsm: "asm",
+					Witness:      []string{},
+					Addresses:    []string{},
+				},
+			},
+			setup: func(t *testing.T) *Repository {
+				ctrl := gomock.NewController(t)
+				t.Cleanup(ctrl.Finish)
+
+				mockConn := NewMockConn(ctrl)
+				mockBatch := NewMockBatch(ctrl)
+				mockMetrics := NewMockMetrics(ctrl)
+
+				// Two distinct months should create two batches.
+				gomock.InOrder(
+					mockConn.EXPECT().
+						PrepareBatch(ctx, insertTransactionInputsQuery()).
+						Return(mockBatch, nil),
+					mockBatch.EXPECT().
+						Append(
+							"BTC", "mainnet",
+							uint64(1),
+							time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+							"tx-jan",
+							uint32(0),
+							"prev",
+							uint32(0),
+							uint32(0),
+							false,
+							uint64(1),
+							"hex",
+							"asm",
+							[]string{},
+							[]string{},
+						).
+						Return(nil),
+					mockBatch.EXPECT().
+						Send().
+						Return(nil),
+					mockConn.EXPECT().
+						PrepareBatch(ctx, insertTransactionInputsQuery()).
+						Return(mockBatch, nil),
+					mockBatch.EXPECT().
+						Append(
+							"BTC", "mainnet",
+							uint64(2),
+							time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+							"tx-feb",
+							uint32(0),
+							"prev",
+							uint32(0),
+							uint32(0),
+							false,
+							uint64(2),
+							"hex",
+							"asm",
+							[]string{},
+							[]string{},
+						).
+						Return(nil),
+					mockBatch.EXPECT().
+						Send().
+						Return(nil),
+					mockMetrics.EXPECT().
+						Observe("insert_transaction_inputs", model.BTC, model.Mainnet, nil, gomock.AssignableToTypeOf(time.Time{})),
+				)
+
+				return &Repository{conn: mockConn, metrics: mockMetrics}
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

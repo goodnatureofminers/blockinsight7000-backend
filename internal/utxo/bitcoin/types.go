@@ -14,8 +14,8 @@ import (
 type (
 	// TransactionOutputResolver resolves transaction outputs, allowing callers to seed and fetch outputs by txid.
 	TransactionOutputResolver interface {
-		Seed(txid string, outputs []model.TransactionOutput)
 		Resolve(ctx context.Context, txid string) ([]model.TransactionOutput, error)
+		ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error)
 	}
 	// RPCMetrics records metrics for RPC calls.
 	RPCMetrics interface {

@@ -1,4 +1,6 @@
 <clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+
     <logger>
         <level>debug</level>
         <log>/var/lib/clickhouse/keeper/keeper.log</log>
@@ -6,6 +8,8 @@
     </logger>
 
     <keeper_server>
+        <listen_host>0.0.0.0</listen_host>
+        <listen_host>::</listen_host>
         <tcp_port>9181</tcp_port>
 
         <server_id>1</server_id>

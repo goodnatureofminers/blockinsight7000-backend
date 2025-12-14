@@ -34,6 +34,7 @@ run-clickhouse-migration:
 lint-docker:
 	@echo "Running golangci-lint in Docker image $(GOLANGCI_LINT_IMAGE)"
 	@$(DOCKER) run --rm \
+		-e CGO_ENABLED=0 \
 		-v $(shell pwd):/app \
 		-w /app \
 		$(GOLANGCI_LINT_IMAGE) \

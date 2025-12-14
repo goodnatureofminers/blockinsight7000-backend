@@ -17,11 +17,13 @@ CREATE TABLE IF NOT EXISTS utxo_transaction_inputs (
     updated_at DateTime('UTC') DEFAULT now() CODEC(Delta(4), LZ4)
 )
 ENGINE = ReplacingMergeTree(updated_at)
-PARTITION BY (coin, network,toYYYYMM(block_timestamp))
-PRIMARY KEY (coin, network, block_height, txid, input_index)
-ORDER BY (coin, network, block_height, txid, input_index);
+PARTITION BY (coin, network)
+PRIMARY KEY (coin, network, txid, input_index)
+ORDER BY (coin, network, txid, input_index);
 
-CREATE TABLE IF NOT EXISTS utxo_transaction_outputs (
+
+CREATE TABLE IF NOT EXISTS utxo_transaction_outputs
+(
     coin LowCardinality(String) CODEC(ZSTD(1)),
     network LowCardinality(String) CODEC(ZSTD(1)),
     block_height UInt64 CODEC(ZSTD(1)),
@@ -36,6 +38,5 @@ CREATE TABLE IF NOT EXISTS utxo_transaction_outputs (
     updated_at DateTime('UTC') DEFAULT now() CODEC(Delta(4), LZ4)
 )
 ENGINE = ReplacingMergeTree(updated_at)
-PARTITION BY (coin, network, toYYYYMM(block_timestamp))
-PRIMARY KEY (coin, network, block_height, txid, output_index)
-ORDER BY (coin, network, block_height, txid, output_index);
+PARTITION BY (coin, network)
+ORDER BY (coin, network, txid, output_index);

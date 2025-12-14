@@ -39,6 +39,11 @@ type (
 		ObserveProcessBatch(err error, heights int, started time.Time)
 		ObserveProcessHeight(err error, height uint64, started time.Time)
 	}
+	// FollowerIngesterMetrics captures metrics for the follower ingester.
+	FollowerIngesterMetrics interface {
+		ObserveFetchMissing(err error, started time.Time)
+		ObserveProcessBatch(err error, heights int, started time.Time)
+	}
 
 	// HistorySource provides historical block data.
 	HistorySource interface {
@@ -52,8 +57,10 @@ type (
 	}
 	// ClickhouseRepository persists blockchain entities to ClickHouse.
 	ClickhouseRepository interface {
+		MaxBlockHeight(ctx context.Context, coin model.Coin, network model.Network) (uint64, error)
+		MaxContiguousBlockHeightByStatuses(ctx context.Context, coin model.Coin, network model.Network, statuses []model.BlockStatus) (uint64, error)
 		RandomMissingBlockHeights(ctx context.Context, coin model.Coin, network model.Network, maxHeight, limit uint64) ([]uint64, error)
-		MaxContiguousBlockHeight(ctx context.Context, coin model.Coin, network model.Network) (uint64, error)
+		RandomBlockHeightsByStatus(ctx context.Context, coin model.Coin, network model.Network, status model.BlockStatus, maxHeight, limit uint64) ([]uint64, error)
 		RandomUnprocessedBlockHeights(ctx context.Context, coin model.Coin, network model.Network, maxHeight, limit uint64) ([]uint64, error)
 		InsertBlocks(ctx context.Context, blocks []model.Block) error
 		InsertTransactions(ctx context.Context, txs []model.Transaction) error

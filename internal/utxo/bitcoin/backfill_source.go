@@ -67,13 +67,38 @@ func (s *BackfillSource) FetchBlock(ctx context.Context, height uint64) (*chain.
 		return nil, err
 	}
 
+	blockTxIDs := make(map[string]struct{}, len(src.Tx))
+	for _, tx := range src.Tx {
+		blockTxIDs[tx.Txid] = struct{}{}
+	}
+
+	// Prefetch previous outputs for all transactions referenced by this block, excluding
+	// those produced inside the same block (we seed those below as we iterate).
+	prevTxIDs := make([]string, 0)
+	for _, tx := range src.Tx {
+		for _, vin := range tx.Vin {
+			if vin.IsCoinBase() {
+				continue
+			}
+			if _, inBlock := blockTxIDs[vin.Txid]; inBlock {
+				continue
+			}
+			prevTxIDs = append(prevTxIDs, vin.Txid)
+		}
+	}
+
+	resolvedOutputs, err := s.resolver.ResolveBatch(ctx, prevTxIDs)
+	if err != nil {
+		return nil, fmt.Errorf("resolve prev outputs for block %d: %w", block.Height, err)
+	}
+
 	inputs := make([]model.TransactionInput, 0)
 
 	for _, tx := range src.Tx {
-		if len(tx.Vin) > math.MaxUint16 {
+		if len(tx.Vin) > math.MaxUint32 {
 			return nil, fmt.Errorf("tx %s vin count overflow: %d", tx.Txid, len(tx.Vin))
 		}
-		if len(tx.Vout) > math.MaxUint16 {
+		if len(tx.Vout) > math.MaxUint32 {
 			return nil, fmt.Errorf("tx %s vout count overflow: %d", tx.Txid, len(tx.Vout))
 		}
 		if tx.Size < 0 {
@@ -87,9 +112,9 @@ func (s *BackfillSource) FetchBlock(ctx context.Context, height uint64) (*chain.
 		if err != nil {
 			return nil, err
 		}
-		s.resolver.Seed(tx.Txid, outputs)
+		resolvedOutputs[tx.Txid] = outputs
 
-		txInputs, err := s.convertInputs(ctx, tx, block.Height, block.Timestamp)
+		txInputs, err := s.convertInputs(ctx, tx, block.Height, block.Timestamp, resolvedOutputs)
 		if err != nil {
 			return nil, err
 		}
@@ -107,6 +132,7 @@ func (s *BackfillSource) convertInputs(
 	tx btcjson.TxRawResult,
 	blockHeight uint64,
 	blockTime time.Time,
+	resolved map[string][]model.TransactionOutput,
 ) ([]model.TransactionInput, error) {
 	inputs := make([]model.TransactionInput, 0, len(tx.Vin))
 
@@ -144,9 +170,9 @@ func (s *BackfillSource) convertInputs(
 		}
 
 		if !vin.IsCoinBase() {
-			prevOutputs, err := s.resolver.Resolve(ctx, vin.Txid)
-			if err != nil {
-				return nil, fmt.Errorf("resolve prev outputs for tx %s: %w", vin.Txid, err)
+			prevOutputs, ok := resolved[vin.Txid]
+			if !ok {
+				return nil, fmt.Errorf("prev outputs for tx %s not prefetched", vin.Txid)
 			}
 			if int(vin.Vout) >= len(prevOutputs) {
 				return nil, fmt.Errorf("input references missing vout %d in tx %s", vin.Vout, vin.Txid)

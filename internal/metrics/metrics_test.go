@@ -60,6 +60,25 @@ func TestHistoryIngesterRecords(t *testing.T) {
 	m.ObserveProcessHeight(nil, 7, start)
 }
 
+func TestFollowerIngesterRecords(t *testing.T) {
+	m := NewFollowerIngester("btc", "mainnet")
+	start := time.Now().Add(-250 * time.Millisecond)
+
+	if inc := delta(t, followerFetchMissingTotal.WithLabelValues("btc", "mainnet", "success"), func() {
+		m.ObserveFetchMissing(nil, start)
+	}); inc != 1 {
+		t.Fatalf("expected follower fetch missing increment, got %v", inc)
+	}
+
+	if inc := delta(t, followerProcessBatchTotal.WithLabelValues("btc", "mainnet", "error"), func() {
+		m.ObserveProcessBatch(errors.New("oops"), 3, start)
+	}); inc != 1 {
+		t.Fatalf("expected follower process batch error increment, got %v", inc)
+	}
+
+	m.ObserveProcessBatch(nil, 5, start)
+}
+
 func TestRPCClientRecords(t *testing.T) {
 	m := NewRPCClient("", "")
 	start := time.Now().Add(-200 * time.Millisecond)
