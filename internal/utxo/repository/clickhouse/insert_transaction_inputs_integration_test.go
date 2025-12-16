@@ -34,7 +34,6 @@ func (s *RepositorySuite) TestInsertTransactionInputs() {
 			Coin:         model.BTC,
 			Network:      model.Mainnet,
 			BlockHeight:  2,
-			BlockTime:    now,
 			TxID:         txID,
 			Index:        0,
 			PrevTxID:     strings.Repeat("c", 64),

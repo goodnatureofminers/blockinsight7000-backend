@@ -17,12 +17,14 @@ func TestTransactionOutputResolver_Resolve_Fetches(t *testing.T) {
 	network := model.Network("mainnet")
 	resolver := NewTransactionOutputResolver(repo, coin, network)
 
-	repoOutputs := []model.TransactionOutput{
+	repoOutputs := []model.TransactionOutputLookup{
 		{TxID: "tx2", Index: 1, Value: 200, Coin: coin, Network: network},
 	}
 	repo.EXPECT().
-		TransactionOutputs(gomock.Any(), coin, network, "tx2").
-		Return(repoOutputs, nil).
+		TransactionOutputsLookupByTxIDs(gomock.Any(), coin, network, []string{"tx2"}).
+		Return(map[string][]model.TransactionOutputLookup{
+			"tx2": repoOutputs,
+		}, nil).
 		Times(1)
 
 	got, err := resolver.Resolve(context.Background(), "tx2")
@@ -43,12 +45,12 @@ func TestTransactionOutputResolver_ResolveBatch_DedupAndFetch(t *testing.T) {
 	network := model.Network("mainnet")
 	resolver := NewTransactionOutputResolver(repo, coin, network)
 
-	repoOutputs := []model.TransactionOutput{
+	repoOutputs := []model.TransactionOutputLookup{
 		{TxID: "fetch", Index: 1, Value: 100, Coin: coin, Network: network},
 	}
 	repo.EXPECT().
-		TransactionOutputsByTxIDs(gomock.Any(), coin, network, []string{"cached", "fetch"}).
-		Return(map[string][]model.TransactionOutput{
+		TransactionOutputsLookupByTxIDs(gomock.Any(), coin, network, []string{"cached", "fetch"}).
+		Return(map[string][]model.TransactionOutputLookup{
 			"cached": {{TxID: "cached", Index: 0, Value: 42}},
 			"fetch":  repoOutputs,
 		}, nil).
@@ -80,13 +82,13 @@ func TestTransactionOutputResolver_ResolveBatch_ChunksRequests(t *testing.T) {
 
 	gomock.InOrder(
 		repo.EXPECT().
-			TransactionOutputsByTxIDs(gomock.Any(), coin, network, []string{"tx1"}).
-			Return(map[string][]model.TransactionOutput{
+			TransactionOutputsLookupByTxIDs(gomock.Any(), coin, network, []string{"tx1"}).
+			Return(map[string][]model.TransactionOutputLookup{
 				"tx1": {{TxID: "tx1", Index: 0, Value: 1, Coin: coin, Network: network}},
 			}, nil),
 		repo.EXPECT().
-			TransactionOutputsByTxIDs(gomock.Any(), coin, network, []string{"tx2"}).
-			Return(map[string][]model.TransactionOutput{
+			TransactionOutputsLookupByTxIDs(gomock.Any(), coin, network, []string{"tx2"}).
+			Return(map[string][]model.TransactionOutputLookup{
 				"tx2": {{TxID: "tx2", Index: 1, Value: 2, Coin: coin, Network: network}},
 			}, nil),
 	)

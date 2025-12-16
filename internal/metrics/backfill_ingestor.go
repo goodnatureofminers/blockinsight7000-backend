@@ -40,6 +40,13 @@ var (
 		Buckets:   prometheus.DefBuckets,
 	}, []string{"coin", "network", "status"})
 
+	backfillProcessBlocksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "blockinsight7000",
+		Subsystem: "backfill_ingestor",
+		Name:      "process_blocks_total",
+		Help:      "Count of blocks processed within batches.",
+	}, []string{"coin", "network", "status"})
+
 	backfillProcessBatchSize = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "blockinsight7000",
 		Subsystem: "backfill_ingestor",
@@ -92,8 +99,9 @@ func (m BackfillIngester) ObserveProcessBatch(err error, heights int, started ti
 		status = "error"
 	}
 	backfillProcessBatchTotal.WithLabelValues(string(m.coin), string(m.network), status).Inc()
+	durationSeconds := time.Since(started).Seconds()
 	backfillProcessBatchDuration.WithLabelValues(string(m.coin), string(m.network), status).
-		Observe(time.Since(started).Seconds())
+		Observe(durationSeconds)
 	backfillProcessBatchSize.WithLabelValues(string(m.coin), string(m.network)).Observe(float64(heights))
 }
 
@@ -105,4 +113,6 @@ func (m BackfillIngester) ObserveProcessHeight(err error, _ uint64, started time
 	}
 	backfillProcessHeightDuration.WithLabelValues(string(m.coin), string(m.network), status).
 		Observe(time.Since(started).Seconds())
+
+	backfillProcessBlocksTotal.WithLabelValues(string(m.coin), string(m.network), status).Inc()
 }

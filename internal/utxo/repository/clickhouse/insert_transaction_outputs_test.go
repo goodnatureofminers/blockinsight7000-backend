@@ -17,7 +17,6 @@ func TestRepository_InsertTransactionOutputs(t *testing.T) {
 		Coin:        model.BTC,
 		Network:     model.Mainnet,
 		BlockHeight: 10,
-		BlockTime:   time.Unix(1700000000, 0),
 		TxID:        "txid",
 		Index:       1,
 		Value:       50,
@@ -98,7 +97,6 @@ func TestRepository_InsertTransactionOutputs(t *testing.T) {
 							string(output.Coin),
 							string(output.Network),
 							output.BlockHeight,
-							output.BlockTime,
 							output.TxID,
 							output.Index,
 							output.Value,
@@ -143,7 +141,6 @@ func TestRepository_InsertTransactionOutputs(t *testing.T) {
 							string(output.Coin),
 							string(output.Network),
 							output.BlockHeight,
-							output.BlockTime,
 							output.TxID,
 							output.Index,
 							output.Value,
@@ -189,7 +186,6 @@ func TestRepository_InsertTransactionOutputs(t *testing.T) {
 							string(output.Coin),
 							string(output.Network),
 							output.BlockHeight,
-							output.BlockTime,
 							output.TxID,
 							output.Index,
 							output.Value,
@@ -221,18 +217,16 @@ func TestRepository_InsertTransactionOutputs(t *testing.T) {
 }
 
 func insertTransactionOutputsQuery() string {
-	return `
-INSERT INTO utxo_transaction_outputs (
+	return `INSERT INTO utxo_transaction_outputs (
     coin,
 	network,
 	block_height,
-	block_timestamp,
 	txid,
 	output_index,
 	value,
 	script_type,
 	script_hex,
 	script_asm,
-addresses
+	addresses
 ) VALUES`
 }

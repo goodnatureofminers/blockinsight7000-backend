@@ -12,6 +12,6 @@ import (
 type (
 	ClickhouseRepository interface {
 		TransactionOutputs(ctx context.Context, coin model.Coin, network model.Network, txid string) ([]model.TransactionOutput, error)
-		TransactionOutputsByTxIDs(ctx context.Context, coin model.Coin, network model.Network, txids []string) (map[string][]model.TransactionOutput, error)
+		TransactionOutputsLookupByTxIDs(ctx context.Context, coin model.Coin, network model.Network, txids []string) (map[string][]model.TransactionOutputLookup, error)
 	}
 )

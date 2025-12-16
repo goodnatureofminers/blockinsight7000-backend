@@ -65,6 +65,7 @@ type (
 		InsertBlocks(ctx context.Context, blocks []model.Block) error
 		InsertTransactions(ctx context.Context, txs []model.Transaction) error
 		InsertTransactionOutputs(ctx context.Context, outputs []model.TransactionOutput) error
+		InsertTransactionOutputsLookup(ctx context.Context, outputs []model.TransactionOutput) error
 		InsertTransactionInputs(ctx context.Context, inputs []model.TransactionInput) error
 	}
 )

@@ -28,18 +28,18 @@ func NewTransactionOutputResolver(repo ClickhouseRepository, coin model.Coin, ne
 }
 
 // Resolve returns outputs for a transaction, consulting the cache first.
-func (r *TransactionOutputResolver) Resolve(ctx context.Context, txid string) ([]model.TransactionOutput, error) {
-	outputs, err := r.repo.TransactionOutputs(ctx, r.coin, r.network, txid)
+func (r *TransactionOutputResolver) Resolve(ctx context.Context, txid string) ([]model.TransactionOutputLookup, error) {
+	outputs, err := r.repo.TransactionOutputsLookupByTxIDs(ctx, r.coin, r.network, []string{txid})
 	if err != nil {
 		return nil, fmt.Errorf("query outputs for tx %s: %w", txid, err)
 	}
 
-	return outputs, nil
+	return outputs[txid], nil
 }
 
 // ResolveBatch returns outputs for many transactions, consulting the cache first and reusing results across the batch.
-func (r *TransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error) {
-	result := make(map[string][]model.TransactionOutput, len(txids))
+func (r *TransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutputLookup, error) {
+	result := make(map[string][]model.TransactionOutputLookup, len(txids))
 
 	seen := make(map[string]struct{}, len(txids))
 	missing := make([]string, 0, len(txids))
@@ -63,7 +63,7 @@ func (r *TransactionOutputResolver) ResolveBatch(ctx context.Context, txids []st
 				end = len(missing)
 			}
 
-			fromRepo, err := r.repo.TransactionOutputsByTxIDs(ctx, r.coin, r.network, missing[start:end])
+			fromRepo, err := r.repo.TransactionOutputsLookupByTxIDs(ctx, r.coin, r.network, missing[start:end])
 			if err != nil {
 				return nil, fmt.Errorf("query outputs for txids: %w", err)
 			}

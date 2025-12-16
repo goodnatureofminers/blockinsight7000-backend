@@ -20,7 +20,7 @@ var (
 		Subsystem: "clickhouse_repository",
 		Name:      "operation_duration_seconds",
 		Help:      "Duration of repository operations.",
-		Buckets:   prometheus.DefBuckets,
+		Buckets:   []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 15, 20, 30},
 	}, []string{"operation", "coin", "network", "status"})
 )
 

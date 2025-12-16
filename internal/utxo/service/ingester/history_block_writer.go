@@ -66,6 +66,9 @@ func (w *historyBlockWriter) flush(ctx context.Context, insertBlocks []model.Ins
 			if err := w.repo.InsertTransactionOutputs(ctx, outputs); err != nil {
 				return err
 			}
+			if err := w.repo.InsertTransactionOutputsLookup(ctx, outputs); err != nil {
+				return err
+			}
 			w.logger.Debug("InsertTransactionOutputs", zap.Int("count", len(outputs)))
 			outputs = outputs[:0]
 		}
@@ -75,6 +78,9 @@ func (w *historyBlockWriter) flush(ctx context.Context, insertBlocks []model.Ins
 		return err
 	}
 	if err := w.repo.InsertTransactionOutputs(ctx, outputs); err != nil {
+		return err
+	}
+	if err := w.repo.InsertTransactionOutputsLookup(ctx, outputs); err != nil {
 		return err
 	}
 

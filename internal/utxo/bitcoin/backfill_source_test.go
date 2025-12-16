@@ -81,7 +81,7 @@ type stubOutputConverter struct {
 	err     error
 }
 
-func (s *stubOutputConverter) Convert(tx btcjson.TxRawResult, blockHeight uint64, blockTime time.Time) ([]model.TransactionOutput, error) {
+func (s *stubOutputConverter) Convert(tx btcjson.TxRawResult, blockHeight uint64) ([]model.TransactionOutput, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -89,9 +89,27 @@ func (s *stubOutputConverter) Convert(tx btcjson.TxRawResult, blockHeight uint64
 	// stamp block metadata since backfill source expects it
 	for i := range out {
 		out[i].BlockHeight = blockHeight
-		out[i].BlockTime = blockTime
 	}
 	return out, nil
+}
+
+func (s *stubOutputConverter) ConvertLookup(tx btcjson.TxRawResult) ([]model.TransactionOutputLookup, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	out := s.outputs[tx.Txid]
+	res := make([]model.TransactionOutputLookup, len(out))
+	for i := range out {
+		res[i] = model.TransactionOutputLookup{
+			Coin:      out[i].Coin,
+			Network:   out[i].Network,
+			TxID:      out[i].TxID,
+			Index:     out[i].Index,
+			Value:     out[i].Value,
+			Addresses: out[i].Addresses,
+		}
+	}
+	return res, nil
 }
 
 func TestBackfillSource_FetchBlock(t *testing.T) {
@@ -151,7 +169,7 @@ func TestBackfillSource_FetchBlock(t *testing.T) {
 
 				mockResolver.EXPECT().
 					ResolveBatch(gomock.Any(), []string{"ext"}).
-					Return(map[string][]model.TransactionOutput{
+					Return(map[string][]model.TransactionOutputLookup{
 						"ext": {{
 							Value:     5000000000,
 							Addresses: []string{"extAddr"},
@@ -208,7 +226,6 @@ func TestBackfillSource_FetchBlock(t *testing.T) {
 							Coin:        model.BTC,
 							Network:     network,
 							BlockHeight: 10,
-							BlockTime:   wantBlockTime,
 							TxID:        "coinbase",
 							Index:       0,
 							PrevTxID:    "",
@@ -220,7 +237,6 @@ func TestBackfillSource_FetchBlock(t *testing.T) {
 							Coin:        model.BTC,
 							Network:     network,
 							BlockHeight: 10,
-							BlockTime:   wantBlockTime,
 							TxID:        "spend",
 							Index:       0,
 							PrevTxID:    "ext",
@@ -270,17 +286,16 @@ func TestBackfillSource_FetchBlock(t *testing.T) {
 
 func TestBackfillSource_convertInputs(t *testing.T) {
 	network := model.Testnet
-	blockTime := time.Unix(1700000000, 0).UTC()
 
 	tests := []struct {
 		name    string
-		args    func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput)
+		args    func(t *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutputLookup)
 		want    []model.TransactionInput
 		wantErr bool
 	}{
 		{
 			name: "coinbase input",
-			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutputLookup) {
 				tx := btcjson.TxRawResult{
 					Txid: "coinbase-tx",
 					Vin: []btcjson.Vin{{
@@ -295,7 +310,6 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 				Coin:        model.BTC,
 				Network:     network,
 				BlockHeight: 100,
-				BlockTime:   blockTime,
 				TxID:        "coinbase-tx",
 				Index:       0,
 				PrevTxID:    "",
@@ -307,7 +321,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 		},
 		{
 			name: "resolves previous output",
-			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutputLookup) {
 				tx := btcjson.TxRawResult{
 					Txid: "current",
 					Vin: []btcjson.Vin{{
@@ -318,7 +332,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 					}},
 				}
 				src := &BackfillSource{network: network}
-				resolved := map[string][]model.TransactionOutput{
+				resolved := map[string][]model.TransactionOutputLookup{
 					"prev-tx": {{
 						Value:     42,
 						Addresses: []string{"addr1"},
@@ -330,7 +344,6 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 				Coin:         model.BTC,
 				Network:      network,
 				BlockHeight:  100,
-				BlockTime:    blockTime,
 				TxID:         "current",
 				Index:        0,
 				PrevTxID:     "prev-tx",
@@ -346,7 +359,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 		},
 		{
 			name: "missing previous output index returns error",
-			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutput) {
+			args: func(_ *testing.T) (context.Context, *BackfillSource, btcjson.TxRawResult, map[string][]model.TransactionOutputLookup) {
 				tx := btcjson.TxRawResult{
 					Txid: "bad",
 					Vin: []btcjson.Vin{{
@@ -355,7 +368,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 					}},
 				}
 				src := &BackfillSource{network: network}
-				return context.Background(), src, tx, map[string][]model.TransactionOutput{
+				return context.Background(), src, tx, map[string][]model.TransactionOutputLookup{
 					"prev": {},
 				}
 			},
@@ -367,7 +380,7 @@ func TestBackfillSource_convertInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, s, tx, resolved := tt.args(t)
 
-			got, err := s.convertInputs(ctx, tx, 100, blockTime, resolved)
+			got, err := s.convertInputs(ctx, tx, 100, resolved)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("convertInputs() error = %v, wantErr %v", err, tt.wantErr)
 			}

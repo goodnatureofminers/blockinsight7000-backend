@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/chain"
@@ -108,13 +107,13 @@ func (s *BackfillSource) FetchBlock(ctx context.Context, height uint64) (*chain.
 			return nil, fmt.Errorf("tx %s negative vsize: %d", tx.Txid, tx.Vsize)
 		}
 
-		outputs, err := s.outputConverter.Convert(tx, block.Height, block.Timestamp)
+		outputs, err := s.outputConverter.ConvertLookup(tx)
 		if err != nil {
 			return nil, err
 		}
 		resolvedOutputs[tx.Txid] = outputs
 
-		txInputs, err := s.convertInputs(ctx, tx, block.Height, block.Timestamp, resolvedOutputs)
+		txInputs, err := s.convertInputs(ctx, tx, block.Height, resolvedOutputs)
 		if err != nil {
 			return nil, err
 		}
@@ -131,8 +130,7 @@ func (s *BackfillSource) convertInputs(
 	ctx context.Context,
 	tx btcjson.TxRawResult,
 	blockHeight uint64,
-	blockTime time.Time,
-	resolved map[string][]model.TransactionOutput,
+	resolved map[string][]model.TransactionOutputLookup,
 ) ([]model.TransactionInput, error) {
 	inputs := make([]model.TransactionInput, 0, len(tx.Vin))
 
@@ -157,7 +155,6 @@ func (s *BackfillSource) convertInputs(
 			Coin:         model.BTC,
 			Network:      s.network,
 			BlockHeight:  blockHeight,
-			BlockTime:    blockTime,
 			TxID:         tx.Txid,
 			Index:        index,
 			PrevTxID:     vin.Txid,

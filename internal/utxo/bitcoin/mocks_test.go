@@ -39,10 +39,10 @@ func (m *MockTransactionOutputResolver) EXPECT() *MockTransactionOutputResolverM
 }
 
 // Resolve mocks base method.
-func (m *MockTransactionOutputResolver) Resolve(ctx context.Context, txid string) ([]model.TransactionOutput, error) {
+func (m *MockTransactionOutputResolver) Resolve(ctx context.Context, txid string) ([]model.TransactionOutputLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resolve", ctx, txid)
-	ret0, _ := ret[0].([]model.TransactionOutput)
+	ret0, _ := ret[0].([]model.TransactionOutputLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -54,10 +54,10 @@ func (mr *MockTransactionOutputResolverMockRecorder) Resolve(ctx, txid interface
 }
 
 // ResolveBatch mocks base method.
-func (m *MockTransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error) {
+func (m *MockTransactionOutputResolver) ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutputLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResolveBatch", ctx, txids)
-	ret0, _ := ret[0].(map[string][]model.TransactionOutput)
+	ret0, _ := ret[0].(map[string][]model.TransactionOutputLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -233,16 +233,31 @@ func (m *MockOutputConverter) EXPECT() *MockOutputConverterMockRecorder {
 }
 
 // Convert mocks base method.
-func (m *MockOutputConverter) Convert(tx btcjson.TxRawResult, blockHeight uint64, blockTime time.Time) ([]model.TransactionOutput, error) {
+func (m *MockOutputConverter) Convert(tx btcjson.TxRawResult, blockHeight uint64) ([]model.TransactionOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Convert", tx, blockHeight, blockTime)
+	ret := m.ctrl.Call(m, "Convert", tx, blockHeight)
 	ret0, _ := ret[0].([]model.TransactionOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Convert indicates an expected call of Convert.
-func (mr *MockOutputConverterMockRecorder) Convert(tx, blockHeight, blockTime interface{}) *gomock.Call {
+func (mr *MockOutputConverterMockRecorder) Convert(tx, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Convert", reflect.TypeOf((*MockOutputConverter)(nil).Convert), tx, blockHeight, blockTime)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Convert", reflect.TypeOf((*MockOutputConverter)(nil).Convert), tx, blockHeight)
+}
+
+// ConvertLookup mocks base method.
+func (m *MockOutputConverter) ConvertLookup(tx btcjson.TxRawResult) ([]model.TransactionOutputLookup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConvertLookup", tx)
+	ret0, _ := ret[0].([]model.TransactionOutputLookup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConvertLookup indicates an expected call of ConvertLookup.
+func (mr *MockOutputConverterMockRecorder) ConvertLookup(tx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConvertLookup", reflect.TypeOf((*MockOutputConverter)(nil).ConvertLookup), tx)
 }
