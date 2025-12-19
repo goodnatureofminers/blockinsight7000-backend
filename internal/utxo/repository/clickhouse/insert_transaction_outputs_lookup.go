@@ -8,28 +8,24 @@ import (
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
 )
 
-// InsertTransactionOutputs stores transaction outputs in ClickHouse.
-func (r *Repository) InsertTransactionOutputs(ctx context.Context, outputs []model.TransactionOutput) error {
+// InsertTransactionOutputsLookup stores transaction outputs in ClickHouse.
+func (r *Repository) InsertTransactionOutputsLookup(ctx context.Context, outputs []model.TransactionOutput) error {
 	start := time.Now()
 	var err error
 	defer func() {
-		r.metrics.Observe("insert_transaction_outputs", firstCoin(outputs), firstNetwork(outputs), err, start)
+		r.metrics.Observe("insert_transaction_outputs_lookup", firstCoin(outputs), firstNetwork(outputs), err, start)
 	}()
 
 	if len(outputs) == 0 {
 		return nil
 	}
 
-	const query = `INSERT INTO utxo_transaction_outputs (
+	const query = `INSERT INTO utxo_transaction_outputs_lookup (
     coin,
 	network,
-	block_height,
 	txid,
 	output_index,
 	value,
-	script_type,
-	script_hex,
-	script_asm,
 	addresses
 ) VALUES`
 
@@ -42,13 +38,9 @@ func (r *Repository) InsertTransactionOutputs(ctx context.Context, outputs []mod
 		if err = batch.Append(
 			string(output.Coin),
 			string(output.Network),
-			output.BlockHeight,
 			output.TxID,
 			output.Index,
 			output.Value,
-			output.ScriptType,
-			output.ScriptHex,
-			output.ScriptAsm,
 			output.Addresses,
 		); err != nil {
 			return fmt.Errorf("append transaction output: %w", err)

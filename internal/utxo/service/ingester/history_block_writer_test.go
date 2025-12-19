@@ -66,6 +66,11 @@ func Test_historyBlockWriter_flush(t *testing.T) {
 					{TxID: "tx2a", Index: 0},
 					{TxID: "tx2b", Index: 0},
 				}).Return(nil)
+				repo.EXPECT().InsertTransactionOutputsLookup(ctx, []model.TransactionOutput{
+					{TxID: "tx1", Index: 0},
+					{TxID: "tx2a", Index: 0},
+					{TxID: "tx2b", Index: 0},
+				}).Return(nil)
 				repo.EXPECT().InsertBlocks(ctx, []model.Block{
 					{Height: 1},
 					{Height: 2},
@@ -109,8 +114,10 @@ func Test_historyBlockWriter_flush(t *testing.T) {
 				gomock.InOrder(
 					repo.EXPECT().InsertTransactions(ctx, block1Txs).Return(nil),
 					repo.EXPECT().InsertTransactionOutputs(ctx, block1Outputs).Return(nil),
+					repo.EXPECT().InsertTransactionOutputsLookup(ctx, block1Outputs).Return(nil),
 					repo.EXPECT().InsertTransactions(ctx, block2Txs).Return(nil),
 					repo.EXPECT().InsertTransactionOutputs(ctx, block2Outputs).Return(nil),
+					repo.EXPECT().InsertTransactionOutputsLookup(ctx, block2Outputs).Return(nil),
 					repo.EXPECT().InsertBlocks(ctx, []model.Block{{Height: 1}, {Height: 2}}).Return(nil),
 				)
 

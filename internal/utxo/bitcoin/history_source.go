@@ -101,7 +101,7 @@ func (s *HistorySource) FetchBlock(ctx context.Context, height uint64) (*chain.H
 			OutputCount: uint32(outputCount),
 		})
 
-		txOutputs, err := s.outputConverter.Convert(tx, block.Height, block.Timestamp)
+		txOutputs, err := s.outputConverter.Convert(tx, block.Height)
 		if err != nil {
 			return nil, err
 		}

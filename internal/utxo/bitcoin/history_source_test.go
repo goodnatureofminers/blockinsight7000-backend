@@ -124,30 +124,28 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 				wantTime := time.Unix(1_700_000_300, 0).UTC()
 
 				mockOutputs.EXPECT().
-					Convert(gomock.Any(), uint64(7), wantTime).
-					DoAndReturn(func(tx btcjson.TxRawResult, _ uint64, _ time.Time) ([]model.TransactionOutput, error) {
+					Convert(gomock.Any(), uint64(7)).
+					DoAndReturn(func(tx btcjson.TxRawResult, _ uint64) ([]model.TransactionOutput, error) {
 						switch tx.Txid {
 						case "txa":
 							return []model.TransactionOutput{{
 								Coin:        model.BTC,
 								Network:     network,
+								BlockHeight: 7,
 								TxID:        "txa",
 								Index:       0,
 								Value:       50_000_000,
 								Addresses:   []string{"addrA"},
-								BlockHeight: 7,
-								BlockTime:   wantTime,
 							}}, nil
 						case "txb":
 							return []model.TransactionOutput{{
 								Coin:        model.BTC,
 								Network:     network,
+								BlockHeight: 7,
 								TxID:        "txb",
 								Index:       0,
 								Value:       70_000_000,
 								Addresses:   []string{"addrB"},
-								BlockHeight: 7,
-								BlockTime:   wantTime,
 							}}, nil
 						default:
 							return nil, nil
@@ -209,7 +207,6 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 							Coin:        model.BTC,
 							Network:     network,
 							BlockHeight: 7,
-							BlockTime:   wantTime,
 							TxID:        "txa",
 							Index:       0,
 							Value:       50_000_000,
@@ -219,7 +216,6 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 							Coin:        model.BTC,
 							Network:     network,
 							BlockHeight: 7,
-							BlockTime:   wantTime,
 							TxID:        "txb",
 							Index:       0,
 							Value:       70_000_000,
@@ -292,7 +288,7 @@ func TestHistorySource_FetchBlock(t *testing.T) {
 						{Txid: "oops", Vout: []btcjson.Vout{{Value: 0.1}}},
 					},
 				}, nil)
-				mockOutputs.EXPECT().Convert(btcjson.TxRawResult{Txid: "oops", Vout: []btcjson.Vout{{Value: 0.1}}}, uint64(5), time.Unix(1_700_000_400, 0).UTC()).
+				mockOutputs.EXPECT().Convert(btcjson.TxRawResult{Txid: "oops", Vout: []btcjson.Vout{{Value: 0.1}}}, uint64(5)).
 					Return(nil, errors.New("convert fail"))
 				return &HistorySource{
 					rpc:             mockRPC,

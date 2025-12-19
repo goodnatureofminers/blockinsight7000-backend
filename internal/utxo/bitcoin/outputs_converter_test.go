@@ -5,7 +5,6 @@ import (
 	"math"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/golang/mock/gomock"
@@ -14,7 +13,6 @@ import (
 
 func TestOutputConverter_Convert(t *testing.T) {
 	network := model.Testnet
-	blockTime := time.Unix(1700000001, 0).UTC()
 
 	tests := []struct {
 		name        string
@@ -54,7 +52,6 @@ func TestOutputConverter_Convert(t *testing.T) {
 				Coin:        model.BTC,
 				Network:     network,
 				BlockHeight: 200,
-				BlockTime:   blockTime,
 				TxID:        "tx1",
 				Index:       0,
 				Value:       150000000,
@@ -112,7 +109,7 @@ func TestOutputConverter_Convert(t *testing.T) {
 			}
 
 			converter := NewOutputConverter(mockDecoder, network)
-			got, err := converter.Convert(tt.args, 200, blockTime)
+			got, err := converter.Convert(tt.args, 200)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Convert() error = %v, wantErr %v", err, tt.wantErr)
 			}

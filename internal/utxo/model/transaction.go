@@ -22,7 +22,6 @@ type TransactionInput struct {
 	Coin         Coin
 	Network      Network
 	BlockHeight  uint64
-	BlockTime    time.Time
 	TxID         string
 	Index        uint32
 	PrevTxID     string
@@ -41,7 +40,6 @@ type TransactionOutput struct {
 	Coin        Coin
 	Network     Network
 	BlockHeight uint64
-	BlockTime   time.Time
 	TxID        string
 	Index       uint32
 	Value       uint64
@@ -49,4 +47,14 @@ type TransactionOutput struct {
 	ScriptHex   string
 	ScriptAsm   string
 	Addresses   []string
+}
+
+// TransactionOutputLookup represents an output produced by a transaction.
+type TransactionOutputLookup struct {
+	Coin      Coin
+	Network   Network
+	TxID      string
+	Index     uint32
+	Value     uint64
+	Addresses []string
 }

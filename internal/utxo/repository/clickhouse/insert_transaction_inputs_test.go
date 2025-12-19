@@ -17,7 +17,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 		Coin:         model.BTC,
 		Network:      model.Mainnet,
 		BlockHeight:  1,
-		BlockTime:    time.Unix(1700000000, 0),
 		TxID:         "txid",
 		Index:        2,
 		PrevTxID:     "prev",
@@ -102,7 +101,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 							string(input.Coin),
 							string(input.Network),
 							input.BlockHeight,
-							input.BlockTime,
 							input.TxID,
 							input.Index,
 							input.PrevTxID,
@@ -151,7 +149,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 							string(input.Coin),
 							string(input.Network),
 							input.BlockHeight,
-							input.BlockTime,
 							input.TxID,
 							input.Index,
 							input.PrevTxID,
@@ -201,7 +198,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 							string(input.Coin),
 							string(input.Network),
 							input.BlockHeight,
-							input.BlockTime,
 							input.TxID,
 							input.Index,
 							input.PrevTxID,
@@ -226,13 +222,12 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 			},
 		},
 		{
-			name: "splits by partition",
+			name: "multiple inputs are written in one batch",
 			inputs: []model.TransactionInput{
 				{
 					Coin:         model.BTC,
 					Network:      model.Mainnet,
 					BlockHeight:  1,
-					BlockTime:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					TxID:         "tx-jan",
 					Index:        0,
 					PrevTxID:     "prev",
@@ -249,7 +244,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 					Coin:         model.BTC,
 					Network:      model.Mainnet,
 					BlockHeight:  2,
-					BlockTime:    time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 					TxID:         "tx-feb",
 					Index:        0,
 					PrevTxID:     "prev",
@@ -271,7 +265,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 				mockBatch := NewMockBatch(ctrl)
 				mockMetrics := NewMockMetrics(ctrl)
 
-				// Two distinct months should create two batches.
 				gomock.InOrder(
 					mockConn.EXPECT().
 						PrepareBatch(ctx, insertTransactionInputsQuery()).
@@ -280,7 +273,6 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 						Append(
 							"BTC", "mainnet",
 							uint64(1),
-							time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 							"tx-jan",
 							uint32(0),
 							"prev",
@@ -295,16 +287,9 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 						).
 						Return(nil),
 					mockBatch.EXPECT().
-						Send().
-						Return(nil),
-					mockConn.EXPECT().
-						PrepareBatch(ctx, insertTransactionInputsQuery()).
-						Return(mockBatch, nil),
-					mockBatch.EXPECT().
 						Append(
 							"BTC", "mainnet",
 							uint64(2),
-							time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 							"tx-feb",
 							uint32(0),
 							"prev",
@@ -340,12 +325,10 @@ func TestRepository_InsertTransactionInputs(t *testing.T) {
 }
 
 func insertTransactionInputsQuery() string {
-	return `
-INSERT INTO utxo_transaction_inputs (
+	return `INSERT INTO utxo_transaction_inputs (
 	coin,
 	network,
 	block_height,
-	block_timestamp,
 	txid,
 	input_index,
 	prev_txid,
@@ -356,6 +339,6 @@ INSERT INTO utxo_transaction_inputs (
 	script_sig_hex,
 	script_sig_asm,
 	witness,
-addresses
+	addresses
 ) VALUES`
 }

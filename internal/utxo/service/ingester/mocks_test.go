@@ -498,6 +498,20 @@ func (mr *MockClickhouseRepositoryMockRecorder) InsertTransactionOutputs(ctx, ou
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTransactionOutputs", reflect.TypeOf((*MockClickhouseRepository)(nil).InsertTransactionOutputs), ctx, outputs)
 }
 
+// InsertTransactionOutputsLookup mocks base method.
+func (m *MockClickhouseRepository) InsertTransactionOutputsLookup(ctx context.Context, outputs []model.TransactionOutput) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertTransactionOutputsLookup", ctx, outputs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertTransactionOutputsLookup indicates an expected call of InsertTransactionOutputsLookup.
+func (mr *MockClickhouseRepositoryMockRecorder) InsertTransactionOutputsLookup(ctx, outputs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertTransactionOutputsLookup", reflect.TypeOf((*MockClickhouseRepository)(nil).InsertTransactionOutputsLookup), ctx, outputs)
+}
+
 // InsertTransactions mocks base method.
 func (m *MockClickhouseRepository) InsertTransactions(ctx context.Context, txs []model.Transaction) error {
 	m.ctrl.T.Helper()

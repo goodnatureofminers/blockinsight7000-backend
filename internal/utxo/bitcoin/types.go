@@ -14,8 +14,8 @@ import (
 type (
 	// TransactionOutputResolver resolves transaction outputs, allowing callers to seed and fetch outputs by txid.
 	TransactionOutputResolver interface {
-		Resolve(ctx context.Context, txid string) ([]model.TransactionOutput, error)
-		ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutput, error)
+		Resolve(ctx context.Context, txid string) ([]model.TransactionOutputLookup, error)
+		ResolveBatch(ctx context.Context, txids []string) (map[string][]model.TransactionOutputLookup, error)
 	}
 	// RPCMetrics records metrics for RPC calls.
 	RPCMetrics interface {
@@ -33,6 +33,7 @@ type (
 	}
 	// OutputConverter converts raw RPC outputs into domain outputs.
 	OutputConverter interface {
-		Convert(tx btcjson.TxRawResult, blockHeight uint64, blockTime time.Time) ([]model.TransactionOutput, error)
+		Convert(tx btcjson.TxRawResult, blockHeight uint64) ([]model.TransactionOutput, error)
+		ConvertLookup(tx btcjson.TxRawResult) ([]model.TransactionOutputLookup, error)
 	}
 )

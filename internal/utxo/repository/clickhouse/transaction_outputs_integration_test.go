@@ -2,7 +2,6 @@ package clickhouse
 
 import (
 	"strings"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/goodnatureofminers/blockinsight7000-backend/internal/utxo/model"
@@ -14,7 +13,6 @@ func (s *RepositorySuite) TestTransactionOutputs() {
 			Coin:        model.BTC,
 			Network:     model.Mainnet,
 			BlockHeight: 1,
-			BlockTime:   time.Now().UTC().Add(-time.Hour).Truncate(time.Second),
 			TxID:        strings.Repeat("a", 64),
 			Index:       0,
 			Value:       100,
@@ -27,7 +25,6 @@ func (s *RepositorySuite) TestTransactionOutputs() {
 			Coin:        model.BTC,
 			Network:     model.Mainnet,
 			BlockHeight: 1,
-			BlockTime:   time.Now().UTC().Add(-time.Hour).Truncate(time.Second),
 			TxID:        strings.Repeat("a", 64),
 			Index:       1,
 			Value:       250,
